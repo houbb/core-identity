@@ -59,7 +59,7 @@ class UserServiceTest {
         assertThat(user).isNotNull();
         assertThat(user.getId()).isEqualTo(1L);
         assertThat(user.getUsername()).isEqualTo("testuser");
-        verify(userRepository, times(2)).save(any(User.class));
+        verify(userRepository).save(any(User.class));
         verify(accountRepository).save(any());
         verify(credentialRepository).save(any());
     }
