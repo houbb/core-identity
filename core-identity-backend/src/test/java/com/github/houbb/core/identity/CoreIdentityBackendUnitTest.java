@@ -49,8 +49,8 @@ class CoreIdentityBackendUnitTest {
 
         systemInfoService = new SystemInfoServiceImpl("0.1.0", "v1", "Test Identity", "COMMUNITY");
 
-        // Use a 256-bit key (32 chars) for HS256
-        String signingKey = "test-signing-key-32-bytes-ok!!";
+        // Use a 256-bit key (32 chars minimum) for HS256
+        String signingKey = "test-signing-key-minimum-32-bytes";
         internalTokenService = new InternalTokenServiceImpl(clientRepo, signingKey, "test-issuer", 600);
 
         auditService = new AuditServiceImpl(auditRepo);
