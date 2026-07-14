@@ -13,8 +13,6 @@ core:
     issuer: core-identity
     token-ttl-seconds: 600
     signing-key: ${CORE_INTERNAL_SIGNING_KEY:dev-signing-key-at-least-256-bits-long-for-hs256}
-  database:
-    type: sqlite
   outbox:
     enabled: true
     poll-interval: 5s
