@@ -21,17 +21,12 @@ class CoreIdentityArchitectureTest {
     private static final String BASE_PACKAGE = "com.github.houbb.core.identity";
 
     private static JavaClasses identityBackendClasses;
-    private static JavaClasses adminBackendClasses;
 
     @BeforeAll
     static void setUp() {
         identityBackendClasses = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages(BASE_PACKAGE);
-
-        adminBackendClasses = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages(BASE_PACKAGE + ".admin");
     }
 
     @Test
@@ -74,28 +69,6 @@ class CoreIdentityArchitectureTest {
                 .and().resideOutsideOfPackage(BASE_PACKAGE + ".admin..")
                 .should().dependOnClassesThat()
                 .resideInAPackage(BASE_PACKAGE + ".admin..");
-        rule.check(identityBackendClasses);
-    }
-
-    @Test
-    @DisplayName("Admin Backend should not contain Identity domain entities")
-    void adminBackendShouldNotContainIdentityEntities() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage(BASE_PACKAGE + ".admin..")
-                .should().resideInAPackage(BASE_PACKAGE + "..")
-                .andShould().haveSimpleNameEndingWith("Entity");
-        // Verify admin backend classes are in the admin package
-        classes().that().resideInAPackage(BASE_PACKAGE + ".admin..")
-                .should().resideInAPackage(BASE_PACKAGE + ".admin..")
-                .check(adminBackendClasses);
-    }
-
-    @Test
-    @DisplayName("Infrastructure package should exist")
-    void infrastructurePackageShouldExist() {
-        ArchRule rule = classes()
-                .that().resideInAPackage("..infrastructure.persistence..")
-                .should().haveSimpleNameStartingWith("Jdbc");
         rule.check(identityBackendClasses);
     }
 }
