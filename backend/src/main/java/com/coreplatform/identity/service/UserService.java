@@ -3,8 +3,8 @@ package com.coreplatform.identity.service;
 import com.coreplatform.identity.entity.Account;
 import com.coreplatform.identity.entity.Credential;
 import com.coreplatform.identity.entity.User;
-import com.coreplatform.identity.exception.BusinessException;
-import com.coreplatform.identity.exception.ErrorCode;
+import com.coreplatform.common.exception.BusinessException;
+import com.coreplatform.identity.exception.IdentityErrorCode;
 import com.coreplatform.identity.repository.AccountRepository;
 import com.coreplatform.identity.repository.CredentialRepository;
 import com.coreplatform.identity.repository.UserRepository;
@@ -35,10 +35,10 @@ public class UserService {
     @Transactional
     public User register(String username, String password, String email, String displayName) {
         if (userRepository.existsByUsernameAndDeletedFalse(username)) {
-            throw new BusinessException(ErrorCode.USERNAME_ALREADY_EXISTS);
+            throw new BusinessException(IdentityErrorCode.USERNAME_ALREADY_EXISTS);
         }
         if (email != null && !email.isBlank() && userRepository.existsByEmailAndDeletedFalse(email)) {
-            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            throw new BusinessException(IdentityErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         User user = new User();
@@ -72,13 +72,13 @@ public class UserService {
     public UserVO getById(Long userId) {
         User user = userRepository.findById(userId)
                 .filter(u -> !u.getDeleted())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.USER_NOT_FOUND));
         return UserMapper.toVO(user);
     }
 
     public UserVO getByUsername(String username) {
         User user = userRepository.findByUsernameAndDeletedFalse(username)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.USER_NOT_FOUND));
         return UserMapper.toVO(user);
     }
 
@@ -86,7 +86,7 @@ public class UserService {
     public UserVO update(Long userId, String displayName, String avatar) {
         User user = userRepository.findById(userId)
                 .filter(u -> !u.getDeleted())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.USER_NOT_FOUND));
 
         if (displayName != null) {
             user.setDisplayName(displayName);
@@ -102,17 +102,17 @@ public class UserService {
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         Account account = accountRepository.findByUserIdAndAccountTypeAndDeletedFalse(
                         userId, Account.AccountType.EMAIL)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_ACCOUNT_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.USER_ACCOUNT_NOT_FOUND));
 
         Credential credential = credentialRepository
                 .findByAccountIdAndCredentialTypeAndStatusAndDeletedFalse(
                         account.getId(),
                         Credential.CredentialType.PASSWORD,
                         Credential.CredentialStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(oldPassword, credential.getCredentialValue())) {
-            throw new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+            throw new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
         credential.setCredentialValue(passwordEncoder.encode(newPassword));
@@ -121,6 +121,6 @@ public class UserService {
 
     public User findUserForAuth(String username) {
         return userRepository.findByUsernameAndDeletedFalse(username)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS));
     }
 }

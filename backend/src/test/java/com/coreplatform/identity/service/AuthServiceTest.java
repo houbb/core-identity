@@ -4,8 +4,8 @@ import com.coreplatform.identity.entity.Account;
 import com.coreplatform.identity.entity.Credential;
 import com.coreplatform.identity.entity.RefreshToken;
 import com.coreplatform.identity.entity.User;
-import com.coreplatform.identity.exception.BusinessException;
-import com.coreplatform.identity.exception.ErrorCode;
+import com.coreplatform.common.exception.BusinessException;
+import com.coreplatform.identity.exception.IdentityErrorCode;
 import com.coreplatform.identity.repository.AccountRepository;
 import com.coreplatform.identity.repository.CredentialRepository;
 import com.coreplatform.identity.repository.RefreshTokenRepository;
@@ -110,7 +110,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login("testuser", "wrongpass"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.AUTH_INVALID_CREDENTIALS.getCode());
+                .isEqualTo(IdentityErrorCode.AUTH_INVALID_CREDENTIALS.getCode());
     }
 
     @Test
@@ -121,7 +121,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login("testuser", "pass"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.AUTH_ACCOUNT_DISABLED.getCode());
+                .isEqualTo(IdentityErrorCode.AUTH_ACCOUNT_DISABLED.getCode());
     }
 
     @Test
@@ -132,7 +132,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login("testuser", "pass"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.AUTH_ACCOUNT_LOCKED.getCode());
+                .isEqualTo(IdentityErrorCode.AUTH_ACCOUNT_LOCKED.getCode());
     }
 
     @Test
@@ -179,7 +179,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.refreshAccessToken("expired-refresh"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getCode());
+                .isEqualTo(IdentityErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getCode());
     }
 
     @Test
@@ -197,7 +197,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.refreshAccessToken("revoked-refresh"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.AUTH_REFRESH_TOKEN_REVOKED.getCode());
+                .isEqualTo(IdentityErrorCode.AUTH_REFRESH_TOKEN_REVOKED.getCode());
     }
 
     @Test

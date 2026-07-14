@@ -1,0 +1,3 @@
+com.coreplatform.starter.config.JacksonAutoConfiguration
+com.coreplatform.starter.config.CorsAutoConfiguration
+com.coreplatform.starter.config.OpenApiAutoConfiguration

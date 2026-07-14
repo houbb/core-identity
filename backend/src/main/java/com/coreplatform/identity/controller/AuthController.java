@@ -3,7 +3,7 @@ package com.coreplatform.identity.controller;
 import com.coreplatform.identity.dto.LoginRequest;
 import com.coreplatform.identity.dto.RefreshTokenRequest;
 import com.coreplatform.identity.dto.RegisterRequest;
-import com.coreplatform.identity.entity.ApiResponse;
+import com.coreplatform.common.response.ApiResponse;
 import com.coreplatform.identity.security.JwtAuthenticationToken;
 import com.coreplatform.identity.service.AuthService;
 import com.coreplatform.identity.vo.LoginResponse;

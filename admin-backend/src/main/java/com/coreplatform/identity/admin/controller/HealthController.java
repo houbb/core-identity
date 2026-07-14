@@ -1,6 +1,6 @@
 package com.coreplatform.identity.admin.controller;
 
-import com.coreplatform.identity.admin.exception.ApiResponse;
+import com.coreplatform.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

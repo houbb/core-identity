@@ -1,8 +1,8 @@
 package com.coreplatform.identity.service;
 
 import com.coreplatform.identity.entity.User;
-import com.coreplatform.identity.exception.BusinessException;
-import com.coreplatform.identity.exception.ErrorCode;
+import com.coreplatform.common.exception.BusinessException;
+import com.coreplatform.identity.exception.IdentityErrorCode;
 import com.coreplatform.identity.repository.AccountRepository;
 import com.coreplatform.identity.repository.CredentialRepository;
 import com.coreplatform.identity.repository.UserRepository;
@@ -71,7 +71,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.register("existinguser", "pass", null, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.USERNAME_ALREADY_EXISTS.getCode());
+                .isEqualTo(IdentityErrorCode.USERNAME_ALREADY_EXISTS.getCode());
     }
 
     @Test
@@ -82,7 +82,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.register("newuser", "pass", "taken@test.com", null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.EMAIL_ALREADY_EXISTS.getCode());
+                .isEqualTo(IdentityErrorCode.EMAIL_ALREADY_EXISTS.getCode());
     }
 
     @Test
@@ -108,6 +108,6 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.getById(999L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.USER_NOT_FOUND.getCode());
+                .isEqualTo(IdentityErrorCode.USER_NOT_FOUND.getCode());
     }
 }

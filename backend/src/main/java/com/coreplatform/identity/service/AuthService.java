@@ -4,8 +4,8 @@ import com.coreplatform.identity.entity.Account;
 import com.coreplatform.identity.entity.Credential;
 import com.coreplatform.identity.entity.RefreshToken;
 import com.coreplatform.identity.entity.User;
-import com.coreplatform.identity.exception.BusinessException;
-import com.coreplatform.identity.exception.ErrorCode;
+import com.coreplatform.common.exception.BusinessException;
+import com.coreplatform.identity.exception.IdentityErrorCode;
 import com.coreplatform.identity.repository.AccountRepository;
 import com.coreplatform.identity.repository.CredentialRepository;
 import com.coreplatform.identity.repository.RefreshTokenRepository;
@@ -64,16 +64,16 @@ public class AuthService {
 
         // Check user status
         if (user.getStatus() == User.UserStatus.DISABLED) {
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_DISABLED);
+            throw new BusinessException(IdentityErrorCode.AUTH_ACCOUNT_DISABLED);
         }
         if (user.getStatus() == User.UserStatus.LOCKED) {
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);
+            throw new BusinessException(IdentityErrorCode.AUTH_ACCOUNT_LOCKED);
         }
 
         // Find EMAIL account
         Account account = accountRepository.findByUserIdAndAccountTypeAndDeletedFalse(
                         user.getId(), Account.AccountType.EMAIL)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS));
 
         // Find PASSWORD credential
         Credential credential = credentialRepository
@@ -81,11 +81,11 @@ public class AuthService {
                         account.getId(),
                         Credential.CredentialType.PASSWORD,
                         Credential.CredentialStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS));
 
         // Verify password
         if (!passwordEncoder.matches(password, credential.getCredentialValue())) {
-            throw new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+            throw new BusinessException(IdentityErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
         return generateLoginResponse(user);
@@ -94,13 +94,13 @@ public class AuthService {
     @Transactional
     public TokenResponse refreshAccessToken(String refreshTokenValue) {
         RefreshToken storedToken = refreshTokenRepository.findByTokenAndDeletedFalse(refreshTokenValue)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED));
+                .orElseThrow(() -> new BusinessException(IdentityErrorCode.AUTH_REFRESH_TOKEN_EXPIRED));
 
         if (!storedToken.isValid()) {
             if (storedToken.getRevoked()) {
-                throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_REVOKED);
+                throw new BusinessException(IdentityErrorCode.AUTH_REFRESH_TOKEN_REVOKED);
             }
-            throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED);
+            throw new BusinessException(IdentityErrorCode.AUTH_REFRESH_TOKEN_EXPIRED);
         }
 
         // Token rotation: revoke old token, issue new one

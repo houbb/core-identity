@@ -2,7 +2,7 @@ package com.coreplatform.identity.controller;
 
 import com.coreplatform.identity.dto.ChangePasswordRequest;
 import com.coreplatform.identity.dto.UpdateUserRequest;
-import com.coreplatform.identity.entity.ApiResponse;
+import com.coreplatform.common.response.ApiResponse;
 import com.coreplatform.identity.security.JwtAuthenticationToken;
 import com.coreplatform.identity.service.UserService;
 import com.coreplatform.identity.vo.UserVO;
