@@ -1,26 +1,107 @@
-# core-identity
+# Core Identity
 
-Core Platform 的身份基础设施，提供统一的用户身份、认证、授权能力。
+Identity and Access Management for Core Platform.
 
-## 子项目
+## Architecture
 
-| 目录 | 说明 |
-|---|---|
-| `backend/` | 用户端 REST API（Spring Boot 3 + Java 21） |
-| `frontend/` | 用户端前端（Vue3 + TypeScript，待实现） |
-| `admin-backend/` | 管理端 API |
-| `admin-frontend/` | 管理端前端（待实现） |
+Four sub-projects with clear boundaries:
 
-## 快速启动
-
-```bash
-cd backend
-mvn spring-boot:run
+```
+core-identity/
+├── core-identity-backend/       # Identity core service (sole data owner)
+├── core-identity-web/           # User self-service portal (Vue 3)
+├── core-identity-admin-backend/ # Management BFF (calls Identity via Internal API)
+├── core-identity-admin-web/     # Admin console (Vue 3, dark theme)
+├── contracts/                   # OpenAPI specifications
+├── docs/                        # Design documents
+└── scripts/                     # Build scripts
 ```
 
-默认使用 SQLite 数据库，无需安装任何外部服务。
+## Responsibilities
 
-## API 前缀
+- **core-identity-backend**: Users, organizations, authentication, authorization. **Only service with database access.**
+- **core-identity-web**: Registration, login, account management for end users and organization members.
+- **core-identity-admin-backend**: Platform admin operations — **BFF pattern, no direct database access.**
+- **core-identity-admin-web**: Admin console for platform super admins, security, audit.
 
-- 用户端: `/api/v1/`
-- 管理端: `/admin-api/v1/`
+## Quick Start
+
+```bash
+# Build all
+scripts/build-all.bat    # Windows
+scripts/build-all.sh     # Linux/macOS
+
+# Start Identity Backend (port 8101)
+cd core-identity-backend
+mvn spring-boot:run
+
+# Start Admin Backend (port 8102)
+cd core-identity-admin-backend
+mvn spring-boot:run
+
+# Start User Web (port 5173)
+cd core-identity-web
+npm install && npm run dev
+
+# Start Admin Web (port 5174)
+cd core-identity-admin-web
+npm install && npm run dev
+```
+
+## API Endpoints
+
+### Public API (8101)
+- `GET /api/v1/identity/meta` — Service metadata
+- `GET /api/v1/identity/capabilities` — Available capabilities
+
+### Internal API (8101, service auth required)
+- `POST /internal/v1/identity/service-tokens` — Issue service token
+- `GET /internal/v1/identity/system/info` — System information
+- `GET /internal/v1/identity/system/health` — Health check
+- `POST /internal/v1/identity/audit-events` — Record audit event
+
+### Admin API (8102)
+- `GET /admin-api/v1/identity/bootstrap` — Initial load
+- `GET /admin-api/v1/identity/system/overview` — Aggregated status
+- `GET /admin-api/v1/identity/system/health` — Health aggregation
+- `GET /admin-api/v1/identity/system/version` — Version info
+- `GET /admin-api/v1/identity/system/contracts` — Contract compatibility
+
+## Configuration
+
+### Identity Backend
+```yaml
+server.port: 8101
+core.identity.instance-name: Core Identity
+core.internal-auth.token-ttl-seconds: 600
+```
+
+### Admin Backend
+```yaml
+server.port: 8102
+core.identity.base-url: http://localhost:8101
+core.admin.development-access: true  # localhost-only in production
+```
+
+## Database
+
+Default: SQLite (`./data/core-identity.db`). Production: MySQL.
+
+Tables (P0 technical foundation):
+- `identity_instance_metadata`
+- `identity_internal_client`
+- `identity_audit_event`
+- `identity_outbox_event`
+- `identity_idempotency_record`
+
+Migrations: Flyway (SQLite + MySQL dual profiles).
+
+## Current Status
+
+**P0 Complete**: Engineering foundation with four sub-projects, internal service auth, audit, outbox, idempotency.
+
+P1 will add: user registration, login, organizations, RBAC.
+
+## License
+
+MIT

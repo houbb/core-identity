@@ -81,8 +81,21 @@ gitnexus/
 gitnexus-web
 gitnexus-web/
 
-# view
+# Node / Frontend
 node_modules/
 dist/
 build/
 coverage/
+*.local
+.env.local
+.env.*.local
+
+# Vite
+.vite/
+
+# Data
+data/
+*.db
+
+# Distribution
+distribution/

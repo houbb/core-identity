@@ -1,0 +1,53 @@
+openapi: "3.0.3"
+info:
+  title: Core Identity Public API
+  version: "0.1.0"
+  description: Public API for core-identity-backend. Facing core-identity-web and third-party clients.
+servers:
+  - url: http://localhost:8101
+paths:
+  /api/v1/identity/meta:
+    get:
+      tags: [Meta]
+      summary: Get service metadata
+      responses:
+        '200':
+          description: Service metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetaResponse'
+  /api/v1/identity/capabilities:
+    get:
+      tags: [Meta]
+      summary: List available capabilities
+      responses:
+        '200':
+          description: List of capabilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+components:
+  schemas:
+    MetaResponse:
+      type: object
+      properties:
+        service:
+          type: string
+          example: "core-identity"
+        version:
+          type: string
+          example: "0.1.0"
+        apiVersion:
+          type: string
+          example: "v1"
+        status:
+          type: string
+          example: "RUNNING"
+        capabilities:
+          type: array
+          items:
+            type: string

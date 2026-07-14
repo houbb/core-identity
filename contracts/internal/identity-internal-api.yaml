@@ -1,0 +1,82 @@
+openapi: "3.0.3"
+info:
+  title: Core Identity Internal API
+  version: "0.1.0"
+  description: Internal API for core-identity-backend. Only facing core-identity-admin-backend and trusted core services. Requires service authentication.
+servers:
+  - url: http://localhost:8101
+paths:
+  /internal/v1/identity/service-tokens:
+    post:
+      tags: [Auth]
+      summary: Issue a service token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id, client_secret]
+              properties:
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+      responses:
+        '200':
+          description: Service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceTokenResponse'
+  /internal/v1/identity/system/info:
+    get:
+      tags: [System]
+      summary: Get system information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: System info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfoResponse'
+  /internal/v1/identity/system/health:
+    get:
+      tags: [System]
+      summary: Health check
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Health status
+  /internal/v1/identity/audit-events:
+    post:
+      tags: [Audit]
+      summary: Record an audit event
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Audit event recorded
+components:
+  schemas:
+    ServiceTokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string }
+        expiresIn: { type: integer }
+        scope: { type: string }
+    SystemInfoResponse:
+      type: object
+      properties:
+        service: { type: string }
+        version: { type: string }
+        apiVersion: { type: string }
+        databaseType: { type: string }
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer

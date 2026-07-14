@@ -1,0 +1,55 @@
+errorCodes:
+  IDENTITY_CONFIGURATION_INVALID:
+    status: 400
+    title: "Configuration invalid"
+    detail: "Required configuration is missing or invalid."
+
+  IDENTITY_DATABASE_UNAVAILABLE:
+    status: 503
+    title: "Database unavailable"
+    detail: "The database could not be reached."
+
+  IDENTITY_SCHEMA_MIGRATION_FAILED:
+    status: 500
+    title: "Schema migration failed"
+    detail: "Flyway migration failed."
+
+  IDENTITY_INTERNAL_CLIENT_INVALID:
+    status: 401
+    title: "Invalid client credentials"
+    detail: "The internal client credentials are invalid."
+
+  IDENTITY_INTERNAL_CLIENT_DISABLED:
+    status: 403
+    title: "Client disabled"
+    detail: "The internal client is disabled."
+
+  IDENTITY_INTERNAL_TOKEN_EXPIRED:
+    status: 401
+    title: "Token expired"
+    detail: "The service token has expired."
+
+  IDENTITY_INTERNAL_SCOPE_DENIED:
+    status: 403
+    title: "Scope denied"
+    detail: "The service token does not have the required scope."
+
+  IDENTITY_CONTRACT_INCOMPATIBLE:
+    status: 400
+    title: "Contract incompatible"
+    detail: "The API contract version is not compatible."
+
+  IDENTITY_BACKEND_UNAVAILABLE:
+    status: 503
+    title: "Identity backend unavailable"
+    detail: "The identity backend could not be reached."
+
+  IDENTITY_IDEMPOTENCY_CONFLICT:
+    status: 409
+    title: "Idempotency conflict"
+    detail: "A request with this idempotency key is already being processed."
+
+  IDENTITY_INTERNAL_ERROR:
+    status: 500
+    title: "Internal error"
+    detail: "An unexpected internal error occurred."

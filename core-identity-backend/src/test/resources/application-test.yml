@@ -1,0 +1,4 @@
+spring:
+  flyway:
+    sqlite:
+      driver-class-name: org.sqlite.JDBC

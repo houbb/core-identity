@@ -1,0 +1,43 @@
+openapi: "3.0.3"
+info:
+  title: Core Identity Admin API
+  version: "0.1.0"
+  description: Admin API provided by core-identity-admin-backend. Facing core-identity-admin-web only.
+servers:
+  - url: http://localhost:8102
+paths:
+  /admin-api/v1/identity/bootstrap:
+    get:
+      tags: [System]
+      summary: Bootstrap / initial load
+      responses:
+        '200':
+          description: System overview
+  /admin-api/v1/identity/system/overview:
+    get:
+      tags: [System]
+      summary: System overview with aggregated status
+      responses:
+        '200':
+          description: System overview
+  /admin-api/v1/identity/system/health:
+    get:
+      tags: [System]
+      summary: Aggregated health
+      responses:
+        '200':
+          description: Health status
+  /admin-api/v1/identity/system/version:
+    get:
+      tags: [System]
+      summary: Version info
+      responses:
+        '200':
+          description: Version information
+  /admin-api/v1/identity/system/contracts:
+    get:
+      tags: [System]
+      summary: Contract versions and compatibility
+      responses:
+        '200':
+          description: Contract compatibility

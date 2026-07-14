@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:./data/core-identity.db
+    driver-class-name: org.sqlite.JDBC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/sqlite
+    baseline-on-migrate: true
+
+core:
+  database:
+    type: sqlite

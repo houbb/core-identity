@@ -1,0 +1,15 @@
+server:
+  port: 8102
+
+spring:
+  application:
+    name: core-identity-admin-backend
+
+core:
+  identity:
+    base-url: ${CORE_IDENTITY_URL:http://localhost:8101}
+  internal-client:
+    client-id: ${CORE_INTERNAL_CLIENT_ID:admin-backend}
+    client-secret: ${CORE_INTERNAL_CLIENT_SECRET:dev-secret-change-in-production}
+  admin:
+    development-access: true
