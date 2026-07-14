@@ -98,3 +98,14 @@ Follow these rules:
 8. Convert recurring discoveries into tests, documentation, conventions, or reusable project knowledge.
 
 For substantial features, architecture changes, ambiguous product work, migrations, or cross-module changes, run the **Unknowns Discovery** skill before implementation.
+
+
+# 要求
+
+每一次新的功能点加入，都必须真实的测试验证，尽可能的和已有的模块打通。
+
+1）最基础的 junit5 断言测试验证，保障基本功能正确性
+
+2）尽可能的端到端测试验证，保障整体功能正确性
+
+3）简明扼要的使用+变更内容
