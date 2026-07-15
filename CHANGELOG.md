@@ -1,5 +1,159 @@
 # Changelog
 
+## 0.4.0 (2026-07-15) — P2 组织与权限体系
+
+### 核心能力
+
+**组织与 RBAC**
+- 团队组织（TEAM）创建、Slug 自动生成、组织切换器
+- 统一权限目录：`{domain}.{resource}.{action}` 命名，Caffeine 本地缓存
+- 4 级风险标签（LOW/MEDIUM/HIGH/CRITICAL）
+- 内置角色：OWNER → ADMIN → MEMBER → VIEWER，系统保护
+- 自定义角色：创建、编辑、权限分配、删除（使用中保护）
+- 成员 → 角色 → 权限 授权链，取并集计算
+- 组织所有权独立标识（`owner_user_id`），所有权转移密码验证
+
+**成员生命周期**
+- 邮箱邀请/接受/拒绝/撤销/重发，7 天有效期
+- Token SHA-256 Hash 存储，一次使用
+- 成员加入来源追踪（OWNER_CREATED / INVITATION）
+- 成员 SUSPEND/REACTIVATE/REMOVE/LEAVE
+- 所有者保护（不可移除/不可退出/不可暂停）
+- 最少角色规则（至少保留一个角色）
+
+**授权决策**
+- `AuthorizationService.check(userId, orgId, permCode)` → ALLOW / DENY_*
+- 组织冻结后读允许、写拒绝
+- Caffeine 进程内缓存（5min TTL，按 authorization_version 失效）
+- 权限快照 API 供前端菜单渲染
+
+**P1→P2 平滑升级**
+- `membership_type` → `MembershipRole` 立即切换（不双读）
+- 旧 PERSONAL 组织自动创建内置角色并绑定
+
+---
+
+### core-identity-backend
+
+**新增 6 张数据表**
+
+| 表名 | 用途 |
+|---|---|
+| `identity_permission` | 统一权限目录，UNIQUE(permission_code) |
+| `identity_permission_source` | 服务权限清单同步记录 |
+| `identity_role` | 组织角色，BUILT_IN/CUSTOM，system_protected |
+| `identity_role_permission` | 角色-权限关联 |
+| `identity_membership_role` | 成员-角色关联 |
+| `identity_invitation` | 成员邀请，SHA-256 Token Hash |
+
+**扩展 3 张表**
+
+| 表名 | 新增字段 |
+|---|---|
+| `identity_organization` | owner_user_id, description, suspended_at/reason, deletion_requested_at/effective_at, logo_object_id, authorization_version |
+| `identity_membership` | source, left_at/removed_at/suspended_at, last_accessed_at, created_by |
+| `identity_session` | last_organization_id, permission_version |
+
+**新增 Domain 对象 × 7**
+`Permission`, `PermissionSource`, `Role`, `RolePermission`, `MembershipRole`, `Invitation`
+
+**新增 Port 接口 × 8**
+`PermissionRepository`, `PermissionSourceRepository`, `RoleRepository`, `RolePermissionRepository`, `MembershipRoleRepository`, `InvitationRepository`
+
+**新增 Application Service × 6**
+- `PermissionCatalogService`：幂等同步权限清单，校验 checksum 跳过未变化
+- `RoleService`：CRUD 角色，权限分配，内置角色初始化
+- `OrganizationService`：创建 TEAM 组织，slug 生成，所有权转移，冻结/恢复/解散
+- `MembershipService`：成员列表、角色调整、暂停/恢复/移除/退出
+- `InvitationService`：邀请创建/接受/拒绝/撤销/重发
+- `AuthorizationService`：权限检查、require、有效权限计算、快照相片
+
+**Public API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `GET` | `/api/v1/identity/permissions` | 权限目录（按 service/resource/riskLevel 筛选） |
+| `GET` | `/api/v1/identity/me/organizations` | 我的组织列表 |
+| `POST` | `/api/v1/identity/me/current-organization` | 切换组织上下文 |
+| `GET` | `/api/v1/identity/me/organizations/{orgId}/permissions` | 权限快照 |
+| `POST` | `/api/v1/identity/organizations` | 创建 TEAM 组织 |
+| `GET/PATCH` | `/api/v1/identity/organizations/{orgId}` | 组织详情/更新 |
+| `POST` | `.../transfer-ownership` | 转移所有权 |
+| `POST` | `.../request-deletion` / `.../cancel-deletion` | 解散/取消 |
+| `GET/POST` | `/api/v1/identity/organizations/{orgId}/roles` | 角色列表/创建 |
+| `GET/PATCH/DELETE` | `.../roles/{roleId}` | 角色详情/更新/删除 |
+| `PUT` | `.../roles/{roleId}/permissions` | 分配权限 |
+| `GET` | `/api/v1/identity/organizations/{orgId}/members` | 成员列表 |
+| `PUT` | `.../members/{id}/roles` | 调整成员角色 |
+| `DELETE` | `.../members/{id}` | 移除成员 |
+| `POST` | `.../leave` | 退出组织 |
+| `POST/GET` | `/api/v1/identity/organizations/{orgId}/invitations` | 邀请管理 |
+| `GET` | `/api/v1/identity/invitations/resolve?token=` | 解析邀请 |
+| `POST` | `/api/v1/identity/invitations/accept` / `/decline` | 接受/拒绝 |
+
+**Internal API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `PUT` | `/internal/v1/identity/permission-sources/{service}` | 其他 Core 同步权限清单 |
+| `POST` | `/internal/v1/identity/authorization/check` | 内部授权检查 |
+
+**基础设施**
+- `CaffeineCacheManager`：TTL 5min，max 10000，按 userId+orgId 做 key
+- `TokenUtils`：提取 `generateRandomToken()` / `hashToken()` / `hashEmail()` 复用
+- `PermissionBootstrapRunner`：启动时自注册 Identity 权限清单（YAML）
+- 权限清单：`permissions/identity-permissions.yml`（19 个权限码）
+
+**Flyway 迁移**
+- 新增 14 个迁移文件（SQLite + MySQL 各 14 个，含 ALTER TABLE 扩展 + CREATE TABLE 新建 + 数据迁移）
+
+---
+
+### core-identity-web
+
+**新增路由（13个）**
+
+| 路由 | 页面 |
+|---|---|
+| `/organizations/new` | 创建团队组织 |
+| `/organizations/:organizationId` | 组织首页 |
+| `/organizations/:organizationId/settings` | 组织设置 |
+| `/organizations/:organizationId/members` | 成员管理 |
+| `/organizations/:organizationId/invitations` | 邀请记录 |
+| `/organizations/:organizationId/invite` | 邀请成员 |
+| `/organizations/:organizationId/roles` | 角色管理 |
+| `/organizations/:organizationId/roles/:roleId` | 编辑角色权限 |
+| `/organizations/:organizationId/danger` | 危险区域（转移所有权/解散） |
+| `/invitations/:token` | 接受邀请 |
+| `/personal` | 个人空间 |
+
+**新增组件（3个）**
+- `AppLayout.vue`：左侧侧边栏布局 + 组织导航 + 权限菜单
+- `OrganizationSwitcher.vue`：组织切换下拉（最近使用→团队→个人空间）
+
+**新增 Store**
+- `organizationStore`：组织列表、切换、权限快照、`hasPermission()` 方法
+
+**路由守卫**
+- `router.beforeEach`：全局认证检查，未登录 → `/login`
+
+**新增 API 模块**
+`organizations.ts`：组织/角色/权限/成员/邀请的全部 API 封装
+
+---
+
+### 测试
+
+- **P2PermissionUnitTest**（9 个测试）：权限同步幂等、checksum 跳过、废弃/恢复、名称更新、按服务/风险等级/关键词筛选
+- **回归测试**：P0 + P1 全部 34 个测试 + P2 9 个测试 = 43 个测试全部通过
+
+```
+Tests run: 43, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
 ## 0.3.0 (2026-07-15) — P1 Identity MVP
 
 ### 核心能力

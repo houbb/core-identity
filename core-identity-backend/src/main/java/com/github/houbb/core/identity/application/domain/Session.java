@@ -2,6 +2,8 @@ package com.github.houbb.core.identity.application.domain;
 
 /**
  * Session domain object — user and admin login sessions.
+ *
+ * P2 extended fields: lastOrganizationId, permissionVersion.
  */
 public class Session {
 
@@ -18,6 +20,8 @@ public class Session {
     private long absoluteExpiresAt;
     private Long revokedAt;
     private String revokeReason;
+    private String lastOrganizationId;
+    private long permissionVersion;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -51,6 +55,10 @@ public class Session {
     public void setRevokedAt(Long revokedAt) { this.revokedAt = revokedAt; }
     public String getRevokeReason() { return revokeReason; }
     public void setRevokeReason(String revokeReason) { this.revokeReason = revokeReason; }
+    public String getLastOrganizationId() { return lastOrganizationId; }
+    public void setLastOrganizationId(String lastOrganizationId) { this.lastOrganizationId = lastOrganizationId; }
+    public long getPermissionVersion() { return permissionVersion; }
+    public void setPermissionVersion(long permissionVersion) { this.permissionVersion = permissionVersion; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

@@ -1,0 +1,117 @@
+service: core-identity
+version: 1
+
+permissions:
+  - code: identity.organization.read
+    name: 查看组织信息
+    resource: organization
+    action: read
+    riskLevel: LOW
+
+  - code: identity.organization.update
+    name: 修改组织信息
+    resource: organization
+    action: update
+    riskLevel: MEDIUM
+
+  - code: identity.organization.delete
+    name: 删除组织
+    resource: organization
+    action: delete
+    riskLevel: CRITICAL
+
+  - code: identity.member.read
+    name: 查看成员列表
+    resource: member
+    action: read
+    riskLevel: LOW
+
+  - code: identity.member.invite
+    name: 邀请成员
+    resource: member
+    action: invite
+    riskLevel: MEDIUM
+
+  - code: identity.member.update
+    name: 管理成员角色
+    resource: member
+    action: update
+    riskLevel: HIGH
+
+  - code: identity.member.remove
+    name: 移除成员
+    resource: member
+    action: remove
+    riskLevel: HIGH
+
+  - code: identity.role.read
+    name: 查看角色
+    resource: role
+    action: read
+    riskLevel: LOW
+
+  - code: identity.role.create
+    name: 创建角色
+    resource: role
+    action: create
+    riskLevel: MEDIUM
+
+  - code: identity.role.update
+    name: 修改角色
+    resource: role
+    action: update
+    riskLevel: MEDIUM
+
+  - code: identity.role.delete
+    name: 删除角色
+    resource: role
+    action: delete
+    riskLevel: HIGH
+
+  - code: identity.permission.catalog.read
+    name: 查看权限目录
+    resource: permission
+    action: catalog.read
+    riskLevel: LOW
+
+  - code: identity.permission.catalog.write
+    name: 同步权限目录
+    resource: permission
+    action: catalog.write
+    riskLevel: CRITICAL
+
+  - code: identity.invitation.read
+    name: 查看邀请记录
+    resource: invitation
+    action: read
+    riskLevel: LOW
+
+  - code: identity.invitation.create
+    name: 创建邀请
+    resource: invitation
+    action: create
+    riskLevel: MEDIUM
+
+  - code: identity.invitation.revoke
+    name: 撤销邀请
+    resource: invitation
+    action: revoke
+    riskLevel: MEDIUM
+
+  - code: identity.organization.transfer_ownership
+    name: 转移组织所有权
+    resource: organization
+    action: transfer_ownership
+    riskLevel: CRITICAL
+
+  - code: identity.organization.suspend
+    name: 冻结组织
+    resource: organization
+    action: suspend
+    riskLevel: CRITICAL
+
+  - code: identity.organization.reactivate
+    name: 恢复组织
+    resource: organization
+    action: reactivate
+    riskLevel: HIGH

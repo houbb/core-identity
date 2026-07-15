@@ -1,8 +1,10 @@
 package com.github.houbb.core.identity.api.exception;
 
 import com.github.houbb.core.identity.api.response.ErrorResponse;
+import com.github.houbb.core.identity.application.service.*;
 import com.github.houbb.core.identity.application.service.AuthServiceImpl;
 import com.github.houbb.core.identity.application.service.InternalTokenServiceImpl;
+import com.github.houbb.core.identity.api.publicapi.controller.OrganizationController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -49,10 +51,67 @@ public class GlobalExceptionHandler {
             case "IDENTITY_CURRENT_PASSWORD_INVALID" -> 400;
             case "IDENTITY_PASSWORD_POLICY_VIOLATION" -> 400;
             case "IDENTITY_USER_NOT_FOUND" -> 404;
+            case "IDENTITY_SESSION_INVALID" -> 401;
             default -> 500;
         };
         ErrorResponse error = ErrorResponse.of(status, "Identity error", e.getMessage(), e.getErrorCode(), "");
         return ResponseEntity.status(status).body(error);
+    }
+
+    @ExceptionHandler(RoleServiceImpl.ServiceException.class)
+    public ResponseEntity<ErrorResponse> handleRoleServiceException(RoleServiceImpl.ServiceException e) {
+        int status = switch (e.getErrorCode()) {
+            case "IDENTITY_ROLE_NOT_FOUND" -> 404;
+            case "IDENTITY_ROLE_NAME_CONFLICT" -> 409;
+            case "IDENTITY_ROLE_PROTECTED" -> 403;
+            case "IDENTITY_ROLE_IN_USE" -> 409;
+            case "IDENTITY_ROLE_ORGANIZATION_MISMATCH" -> 403;
+            case "IDENTITY_PERMISSION_NOT_FOUND" -> 404;
+            case "IDENTITY_PERMISSION_DEPRECATED" -> 400;
+            case "IDENTITY_PERMISSION_DENIED" -> 403;
+            case "IDENTITY_ROLE_NAME_REQUIRED" -> 400;
+            default -> 500;
+        };
+        ErrorResponse error = ErrorResponse.of(status, "Role error", e.getMessage(), e.getErrorCode(), "");
+        return ResponseEntity.status(status).body(error);
+    }
+
+    @ExceptionHandler(OrganizationServiceImpl.ServiceException.class)
+    public ResponseEntity<ErrorResponse> handleOrgServiceException(OrganizationServiceImpl.ServiceException e) {
+        int status = switch (e.getErrorCode()) {
+            case "IDENTITY_ORGANIZATION_NOT_FOUND" -> 404;
+            case "IDENTITY_ORGANIZATION_NOT_ACTIVE" -> 403;
+            case "IDENTITY_MEMBERSHIP_NOT_FOUND" -> 404;
+            case "IDENTITY_MEMBERSHIP_NOT_ACTIVE" -> 403;
+            case "IDENTITY_OWNERSHIP_TRANSFER_INVALID" -> 403;
+            case "IDENTITY_PERSONAL_ORGANIZATION_IMMUTABLE" -> 403;
+            case "IDENTITY_OWNER_CANNOT_LEAVE" -> 403;
+            case "IDENTITY_OWNER_CANNOT_BE_REMOVED" -> 403;
+            case "IDENTITY_MEMBER_ROLE_REQUIRED" -> 400;
+            default -> 500;
+        };
+        ErrorResponse error = ErrorResponse.of(status, "Organization error", e.getMessage(), e.getErrorCode(), "");
+        return ResponseEntity.status(status).body(error);
+    }
+
+    @ExceptionHandler(InvitationServiceImpl.ServiceException.class)
+    public ResponseEntity<ErrorResponse> handleInvitationServiceException(InvitationServiceImpl.ServiceException e) {
+        int status = switch (e.getErrorCode()) {
+            case "IDENTITY_INVITATION_NOT_FOUND" -> 404;
+            case "IDENTITY_INVITATION_EXPIRED" -> 410;
+            case "IDENTITY_INVITATION_ALREADY_ACCEPTED" -> 409;
+            case "IDENTITY_INVITATION_EMAIL_MISMATCH" -> 403;
+            case "IDENTITY_MEMBER_ALREADY_EXISTS" -> 409;
+            default -> 500;
+        };
+        ErrorResponse error = ErrorResponse.of(status, "Invitation error", e.getMessage(), e.getErrorCode(), "");
+        return ResponseEntity.status(status).body(error);
+    }
+
+    @ExceptionHandler(OrganizationController.AuthException.class)
+    public ResponseEntity<ErrorResponse> handleOrgControllerAuthException(OrganizationController.AuthException e) {
+        ErrorResponse error = ErrorResponse.of(401, "Authentication required", e.getMessage(), e.getErrorCode(), "");
+        return ResponseEntity.status(401).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

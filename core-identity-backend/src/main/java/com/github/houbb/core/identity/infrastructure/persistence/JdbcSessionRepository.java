@@ -110,6 +110,15 @@ public class JdbcSessionRepository implements SessionRepository {
         );
     }
 
+    @Override
+    public void updateLastOrganizationId(String id, String lastOrganizationId, long permissionVersion,
+                                         long now, long version) {
+        jdbcTemplate.update(
+                "UPDATE identity_session SET last_organization_id = ?, permission_version = ?, " +
+                "updated_at = ?, version = version + 1 WHERE id = ? AND version = ?",
+                lastOrganizationId, permissionVersion, now, id, version);
+    }
+
     static class SessionRowMapper implements RowMapper<Session> {
         @Override
         public Session mapRow(ResultSet rs, int rowNum) throws SQLException {

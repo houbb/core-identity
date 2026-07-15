@@ -285,13 +285,19 @@ class P1IdentityUnitTest {
         @Override public void save(Organization o) { byId.put(o.getId(), o); if (o.getPersonalOwnerUserId() != null) byOwner.put(o.getPersonalOwnerUserId(), o); }
         @Override public Optional<Organization> findById(String id) { return Optional.ofNullable(byId.get(id)); }
         @Override public Optional<Organization> findByPersonalOwner(String uid) { return Optional.ofNullable(byOwner.get(uid)); }
+        @Override public Optional<Organization> findByOwnerUserId(String uid) { return Optional.ofNullable(byOwner.get(uid)); }
+        @Override public List<Organization> findAllByUserId(String uid) { return byOwner.containsKey(uid) ? List.of(byOwner.get(uid)) : List.of(); }
         @Override public Optional<Organization> findBySlug(String slug) { return byId.values().stream().filter(o -> slug.equals(o.getSlug())).findFirst(); }
         @Override public void update(Organization o) { save(o); }
+        @Override public void updateOwner(String id, String newOwnerUserId, long av, long now, long v) {}
+        @Override public void updateStatus(String id, String status, long now, long v) { byId.values().stream().filter(o -> o.getId().equals(id)).findFirst().ifPresent(o -> o.setStatus(status)); }
+        @Override public int countByUserIdAndStatus(String uid, String status) { return 0; }
     }
 
     static class StubMembershipRepository implements MembershipRepository {
         final List<Membership> memberships = new ArrayList<>();
         @Override public void save(Membership m) { memberships.add(m); }
+        @Override public Optional<Membership> findById(String id) { return memberships.stream().filter(m -> id.equals(m.getId())).findFirst(); }
         @Override public Optional<Membership> findByOrgAndUser(String oid, String uid) {
             return memberships.stream().filter(m -> oid.equals(m.getOrganizationId()) && uid.equals(m.getUserId())).findFirst();
         }
@@ -299,7 +305,11 @@ class P1IdentityUnitTest {
             return memberships.stream().filter(m -> uid.equals(m.getUserId())).toList();
         }
         @Override public List<Membership> findByOrganizationId(String oid) { return new ArrayList<>(); }
+        @Override public List<Membership> findByOrgAndStatus(String oid, String status) { return new ArrayList<>(); }
         @Override public void update(Membership m) {}
+        @Override public void updateStatus(String id, String status, long now, long v) {}
+        @Override public void updateLastAccessed(String id, long now, long v) {}
+        @Override public int countActiveByOrgId(String oid) { return 0; }
     }
 
     static class StubSessionRepository implements SessionRepository {
@@ -318,6 +328,7 @@ class P1IdentityUnitTest {
             return sessions.stream().filter(s -> uid.equals(s.getUserId()) && "ACTIVE".equals(s.getStatus())).toList();
         }
         @Override public void update(Session s) {}
+        @Override public void updateLastOrganizationId(String id, String oid, long pv, long now, long v) {}
         @Override public void revokeByUserId(String uid, String reason, long ts) {}
         @Override public void revokeExceptCurrent(String uid, String sid, String reason, long ts) {}
         @Override public void expireIdle(long ts) {}

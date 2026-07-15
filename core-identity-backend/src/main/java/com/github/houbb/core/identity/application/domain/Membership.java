@@ -2,6 +2,8 @@ package com.github.houbb.core.identity.application.domain;
 
 /**
  * Membership domain object — user-to-organization relationship.
+ *
+ * P2 extended fields: source, lifecycle timestamps, lastAccessedAt, createdBy.
  */
 public class Membership {
 
@@ -10,7 +12,13 @@ public class Membership {
     private String userId;
     private String membershipType;
     private String status;
+    private String source;
     private long joinedAt;
+    private Long leftAt;
+    private Long removedAt;
+    private Long suspendedAt;
+    private Long lastAccessedAt;
+    private String createdBy;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -28,8 +36,20 @@ public class Membership {
     public void setMembershipType(String membershipType) { this.membershipType = membershipType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
     public long getJoinedAt() { return joinedAt; }
     public void setJoinedAt(long joinedAt) { this.joinedAt = joinedAt; }
+    public Long getLeftAt() { return leftAt; }
+    public void setLeftAt(Long leftAt) { this.leftAt = leftAt; }
+    public Long getRemovedAt() { return removedAt; }
+    public void setRemovedAt(Long removedAt) { this.removedAt = removedAt; }
+    public Long getSuspendedAt() { return suspendedAt; }
+    public void setSuspendedAt(Long suspendedAt) { this.suspendedAt = suspendedAt; }
+    public Long getLastAccessedAt() { return lastAccessedAt; }
+    public void setLastAccessedAt(Long lastAccessedAt) { this.lastAccessedAt = lastAccessedAt; }
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

@@ -22,6 +22,8 @@ public interface SessionRepository {
 
     void update(Session session);
 
+    void updateLastOrganizationId(String id, String lastOrganizationId, long permissionVersion, long now, long version);
+
     void revokeByUserId(String userId, String reason, long revokedAt);
 
     void revokeExceptCurrent(String userId, String currentSessionId, String reason, long revokedAt);
