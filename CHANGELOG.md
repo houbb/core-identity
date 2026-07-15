@@ -1,5 +1,146 @@
 # Changelog
 
+## 0.5.0 (2026-07-15) — P3 平台级身份服务
+
+### 核心能力
+
+**OAuth 2.0 / OIDC 授权服务器**
+- Authorization Code + PKCE (S256) 标准流程
+- Client Credentials（Service Account 机器间认证）
+- Refresh Token 轮换 + 重放检测（Token Family 全部撤销）
+- Access Token（RS256 签名 JWT）+ ID Token
+- Token Introspection + Revocation（RFC 7662 / RFC 7009）
+- JWKS 端点 + OpenID Connect Discovery
+- Scope-Audience 交叉校验
+
+**OAuth Client 管理**
+- PUBLIC / CONFIDENTIAL 两种 Client 类型
+- PLATFORM / ORGANIZATION / USER 三种所有权
+- Client Secret 创建、轮换、撤销（只显示一次）
+- Redirect URI 注册
+
+**API Key**
+- 用户或 Service Account 创建，绑定组织/Scope/Audience/有效期
+- 实时 Introspection（Gateway 验证）+ JWT 交换
+- 创建/撤销/轮换
+
+**Service Account**
+- 组织级非人身份，通过角色获得权限
+- Service Credential（client_id + client_secret）独立管理
+- Client Credentials 流程获取短期 Access Token
+
+**授权与同意**
+- Authorization Grant 记录用户-Client-组织授权关系
+- Grant Scope 关联表
+- 用户可查看/撤销已授权应用
+
+---
+
+### core-identity-backend
+
+**新增 22 张数据表**
+
+| 表名 | 用途 |
+|---|---|
+| `identity_scope` | OAuth Scope 目录，含风险等级、授权文案 |
+| `identity_scope_permission` | Scope → Permission 映射 |
+| `identity_audience` | 资源服务注册（core-storage 等） |
+| `identity_signing_key` | RSA 签名密钥，AES-256-GCM 加密私钥 |
+| `identity_token_revocation` | JTI 级紧急撤销 |
+| `identity_oauth_client` | OAuth 应用注册 |
+| `identity_oauth_client_redirect_uri` | 回调地址精确匹配 |
+| `identity_oauth_client_secret` | Client Secret Hash 存储 |
+| `identity_oauth_client_scope` | Client 允许的 Scope |
+| `identity_oauth_client_audience` | Client 允许的 Audience |
+| `identity_authorization_code` | 一次性授权码（PKCE 绑定） |
+| `identity_authorization_grant` | 用户-Client 授权记录 |
+| `identity_authorization_grant_scope` | Grant → Scope 关联 |
+| `identity_refresh_token_family` | Refresh Token 族（轮换+重放检测） |
+| `identity_refresh_token` | Refresh Token Hash 存储 |
+| `identity_service_account` | 服务账号主体 |
+| `identity_service_account_role` | 服务账号角色分配 |
+| `identity_service_credential` | 服务账号 OAuth 凭证 |
+| `identity_api_key` | API Key（只存 Hash） |
+| `identity_api_key_scope` | API Key Scope 关联 |
+| `identity_api_key_audience` | API Key Audience 关联 |
+
+**新增 Domain 对象 × 13**
+`Scope`, `ScopePermission`, `Audience`, `SigningKey`, `OAuthClient`, `OAuthClientSecret`, `AuthorizationCode`, `AuthorizationGrant`, `AuthorizationGrantScope`, `RefreshToken`, `RefreshTokenFamily`, `ServiceAccount`, `ServiceAccountRole`, `ServiceCredential`, `ApiKey`
+
+**新增 Port 接口 × 16**
+全部 P3 实体的 Repository 接口 + `TokenRevocationRepository`
+
+**新增 Application Service × 8**
+- `ScopeCatalogService`：Scope/Audience 目录管理，幂等同步
+- `SigningKeyManager`：RSA 2048 密钥生命周期（PENDING→ACTIVE→RETIRING→RETIRED→REVOKED）
+- `OAuthTokenService`：JWT 签发/验证（RS256），JWKS 构建
+- `OAuthClientService`：Client 注册/查询/暂停/Secret 轮换
+- `OAuthAuthorizationService`：Authorize/Token/Introspect/Revoke 完整 OAuth 流程
+- `ApiKeyService`：API Key 创建/撤销/Introspection/交换 JWT
+- `ServiceAccountService`：Service Account 创建/暂停/查询
+
+**Public API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `GET` | `/.well-known/openid-configuration` | OIDC Discovery |
+| `GET` | `/.well-known/jwks.json` | JWKS 公钥 |
+| `GET` | `/oauth2/authorize` | OAuth 授权端点（PKCE） |
+| `POST` | `/oauth2/token` | Token 端点（authorization_code / refresh_token / client_credentials） |
+| `POST` | `/oauth2/introspect` | Token 内省 |
+| `POST` | `/oauth2/revoke` | Token 撤销 |
+| `GET` | `/userinfo` | OIDC UserInfo |
+| `GET` | `/api/v1/identity/scopes` | Scope 目录 |
+| `GET/POST` | `/api/v1/identity/developer/clients` | 开发者 Client 管理 |
+| `POST` | `/api/v1/identity/developer/clients/{id}/secrets` | Client Secret 轮换 |
+| `POST` | `/api/v1/identity/developer/clients/{id}/suspend` | 暂停 Client |
+| `GET/POST/DELETE` | `/api/v1/identity/developer/api-keys` | API Key 管理 |
+| `POST` | `/api/v1/identity/developer/service-accounts` | 创建 Service Account |
+| `GET` | `/api/v1/identity/developer/grants` | 用户授权列表 |
+| `POST` | `/api/v1/identity/developer/grants/{id}/revoke` | 撤销授权 |
+
+**Internal API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `PUT` | `/internal/v1/identity/scope-sources/{service}` | 其他 Core 同步 Scope 清单 |
+| `PUT` | `/internal/v1/identity/scope-sources/{code}/permissions` | 同步 Scope-Permission 映射 |
+| `POST` | `/internal/v1/identity/api-keys/introspect` | API Key 内省（Gateway 用） |
+| `POST` | `/internal/v1/identity/tokens/introspect` | JWT Token 内省 |
+
+**安全与基础设施**
+- Signing Key 自动初始化（`SigningKeyBootstrapRunner`）
+- 私钥 AES-256-GCM 加密存储，主密钥通过环境变量注入
+- OAuth 异常统一返回 RFC 6749 错误格式
+- Session 正确验证（Hash 查库）替代错误的 Cookie 截取
+- Scope-Audience 交叉校验防止跨服务 Token 滥用
+
+**Flyway 迁移**
+- 新增 22 个 MySQL 迁移文件 + 22 个 SQLite 迁移文件
+
+---
+
+### 测试
+
+- **P3PlatformUnitTest**（19 个测试）：
+  - Scope Catalog：幂等同步、按服务筛选
+  - Signing Key & JWT：创建/激活、签发/验证、JWKS 输出
+  - OAuth Client：创建+Secret、Secret 校验、Secret 轮换
+  - Authorization Code + PKCE：生成/校验、非活跃 Client 拒绝
+  - Refresh Token：轮换流程、重放检测
+  - Service Account：创建、组织范围查询
+  - API Key：创建/交换 JWT、撤销、用户范围查询
+  - Token Introspection：活跃/失效
+
+- **回归测试**：P0 + P1 + P2 + P3 = 62 个测试 + Admin Backend 4 个测试 = 66 个测试全部通过
+
+```
+Tests run: 66, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
 ## 0.4.0 (2026-07-15) — P2 组织与权限体系
 
 ### 核心能力

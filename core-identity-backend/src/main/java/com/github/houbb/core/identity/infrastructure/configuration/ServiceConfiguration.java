@@ -29,6 +29,24 @@ public class ServiceConfiguration {
     @Value("${core.internal-auth.token-ttl-seconds:600}")
     private int tokenTtlSeconds;
 
+    @Value("${core.oauth.master-key:dev-master-key-32-bytes-for-aes256!}")
+    private String oauthMasterKey;
+
+    @Value("${core.oauth.issuer-base:http://localhost:8101}")
+    private String oauthIssuerBase;
+
+    @Value("${core.oauth.access-token-ttl-seconds:900}")
+    private int accessTokenTtlSeconds;
+
+    @Value("${core.oauth.refresh-token-ttl-seconds:604800}")
+    private int refreshTokenTtlSeconds;
+
+    @Value("${core.oauth.auth-code-ttl-seconds:120}")
+    private int authCodeTtlSeconds;
+
+    @Value("${core.oauth.id-token-ttl-seconds:600}")
+    private int idTokenTtlSeconds;
+
     @Value("${core.idempotency.record-ttl-hours:24}")
     private int recordTtlHours;
 
@@ -67,6 +85,18 @@ public class ServiceConfiguration {
     @Bean
     public CaffeineCacheManager caffeineCacheManager() {
         return new CaffeineCacheManager();
+    }
+
+    // === P3.2 Signing Key ===
+
+    @Bean
+    public SigningKeyManager signingKeyManager(SigningKeyRepository signingKeyRepository) {
+        return new SigningKeyManager(signingKeyRepository, oauthMasterKey);
+    }
+
+    @Bean
+    public OAuthTokenService oAuthTokenService(SigningKeyManager signingKeyManager) {
+        return new OAuthTokenService(signingKeyManager, oauthIssuerBase);
     }
 
     // === P1 beans ===
@@ -155,6 +185,49 @@ public class ServiceConfiguration {
                                                 OutboxService outboxService) {
         return new InvitationServiceImpl(invitationRepo, membershipRepo, membershipRoleRepo,
                 orgRepo, roleRepo, emailRepo, auditService, outboxService);
+    }
+
+    // === P3.1 Scope Catalog ===
+
+    @Bean
+    public ScopeCatalogService scopeCatalogService(ScopeRepository scopeRepo,
+                                                   ScopePermissionRepository scopePermissionRepo) {
+        return new ScopeCatalogServiceImpl(scopeRepo, scopePermissionRepo);
+    }
+
+    // === P3.3 OAuth Client ===
+
+    @Bean
+    public OAuthClientService oAuthClientService(OAuthClientRepository clientRepo,
+                                                  OAuthClientSecretRepository secretRepo) {
+        return new OAuthClientService(clientRepo, secretRepo);
+    }
+
+    // === P3.4-5 OAuth Flow ===
+
+    @Bean
+    public OAuthAuthorizationService oAuthAuthorizationService(
+            AuthorizationCodeRepository codeRepo, OAuthClientService clientService,
+            OAuthTokenService tokenService, AuthorizationGrantRepository grantRepo,
+            RefreshTokenFamilyRepository familyRepo, RefreshTokenRepository rtRepo,
+            TokenRevocationRepository revRepo, ServiceAccountRepository saRepo,
+            ScopeRepository scopeRepo) {
+        return new OAuthAuthorizationService(codeRepo, clientService, tokenService,
+                grantRepo, familyRepo, rtRepo, revRepo, saRepo, scopeRepo,
+                authCodeTtlSeconds, accessTokenTtlSeconds, refreshTokenTtlSeconds, idTokenTtlSeconds);
+    }
+
+    // === P3.6-7 API Key & Service Account ===
+
+    @Bean
+    public ApiKeyService apiKeyService(ApiKeyRepository keyRepo, OAuthTokenService tokenService) {
+        return new ApiKeyService(keyRepo, tokenService, accessTokenTtlSeconds);
+    }
+
+    @Bean
+    public ServiceAccountService serviceAccountService(ServiceAccountRepository saRepo,
+                                                       OAuthTokenService tokenService) {
+        return new ServiceAccountService(saRepo, tokenService);
     }
 
     // === P2.5 Authorization ===

@@ -4,6 +4,9 @@ import com.github.houbb.core.identity.api.response.ErrorResponse;
 import com.github.houbb.core.identity.application.service.*;
 import com.github.houbb.core.identity.application.service.AuthServiceImpl;
 import com.github.houbb.core.identity.application.service.InternalTokenServiceImpl;
+import com.github.houbb.core.identity.application.service.OAuthAuthorizationService;
+import com.github.houbb.core.identity.application.service.OAuthClientService;
+import com.github.houbb.core.identity.application.service.OAuthTokenService;
 import com.github.houbb.core.identity.api.publicapi.controller.OrganizationController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.Map;
 
 /**
  * Global exception handler returning RFC 7807 Problem Details.
@@ -121,6 +126,32 @@ public class GlobalExceptionHandler {
                 .reduce((a, b) -> a + "; " + b).orElse("Validation failed");
         ErrorResponse error = ErrorResponse.of(400, "Validation error", detail, "IDENTITY_VALIDATION_ERROR", "");
         return ResponseEntity.status(400).body(error);
+    }
+
+    // === OAuth exception handlers returning RFC 6749 error format ===
+
+    @ExceptionHandler(OAuthAuthorizationService.OAuthException.class)
+    public ResponseEntity<Map<String, Object>> handleOAuthException(OAuthAuthorizationService.OAuthException e) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("error", "invalid_grant");
+        body.put("error_description", e.getMessage());
+        return ResponseEntity.status(400).body(body);
+    }
+
+    @ExceptionHandler(OAuthClientService.OAuthClientNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleOAuthClientNotFound(OAuthClientService.OAuthClientNotFoundException e) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("error", "invalid_client");
+        body.put("error_description", e.getMessage());
+        return ResponseEntity.status(401).body(body);
+    }
+
+    @ExceptionHandler(OAuthTokenService.TokenValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleTokenValidation(OAuthTokenService.TokenValidationException e) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("error", "invalid_token");
+        body.put("error_description", e.getMessage());
+        return ResponseEntity.status(401).body(body);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
