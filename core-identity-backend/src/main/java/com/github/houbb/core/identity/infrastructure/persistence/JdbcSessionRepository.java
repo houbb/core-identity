@@ -26,13 +26,18 @@ public class JdbcSessionRepository implements SessionRepository {
         jdbcTemplate.update(
                 "INSERT INTO identity_session (id, user_id, session_type, token_hash, status, ip_address, " +
                 "user_agent, device_name, last_active_at, idle_expires_at, absolute_expires_at, " +
-                "revoked_at, revoke_reason, created_at, updated_at, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "revoked_at, revoke_reason, device_id, authentication_level, authentication_methods_json, " +
+                "strong_auth_at, risk_level, reauth_required_at, security_version, last_risk_evaluated_at, " +
+                "created_at, updated_at, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 session.getId(), session.getUserId(), session.getSessionType(), session.getTokenHash(),
                 session.getStatus(), session.getIpAddress(), session.getUserAgent(), session.getDeviceName(),
                 session.getLastActiveAt(), session.getIdleExpiresAt(), session.getAbsoluteExpiresAt(),
-                session.getRevokedAt(), session.getRevokeReason(), session.getCreatedAt(),
-                session.getUpdatedAt(), session.getVersion()
+                session.getRevokedAt(), session.getRevokeReason(),
+                session.getDeviceId(), session.getAuthenticationLevel(), session.getAuthenticationMethodsJson(),
+                session.getStrongAuthAt(), session.getRiskLevel(), session.getReauthRequiredAt(),
+                session.getSecurityVersion(), session.getLastRiskEvaluatedAt(),
+                session.getCreatedAt(), session.getUpdatedAt(), session.getVersion()
         );
     }
 
@@ -136,6 +141,14 @@ public class JdbcSessionRepository implements SessionRepository {
             s.setAbsoluteExpiresAt(rs.getLong("absolute_expires_at"));
             s.setRevokedAt(JdbcUserRepository.getNullableLong(rs, "revoked_at"));
             s.setRevokeReason(rs.getString("revoke_reason"));
+            s.setDeviceId(rs.getString("device_id"));
+            s.setAuthenticationLevel(rs.getString("authentication_level"));
+            s.setAuthenticationMethodsJson(rs.getString("authentication_methods_json"));
+            s.setStrongAuthAt(JdbcUserRepository.getNullableLong(rs, "strong_auth_at"));
+            s.setRiskLevel(rs.getString("risk_level"));
+            s.setReauthRequiredAt(JdbcUserRepository.getNullableLong(rs, "reauth_required_at"));
+            s.setSecurityVersion(rs.getLong("security_version"));
+            s.setLastRiskEvaluatedAt(JdbcUserRepository.getNullableLong(rs, "last_risk_evaluated_at"));
             s.setCreatedAt(rs.getLong("created_at"));
             s.setUpdatedAt(rs.getLong("updated_at"));
             s.setVersion(rs.getLong("version"));

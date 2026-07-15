@@ -24,11 +24,18 @@ public class JdbcUserRepository implements UserRepository {
     public void save(User user) {
         jdbcTemplate.update(
                 "INSERT INTO identity_user (id, display_name, status, locale, timezone, avatar_object_id, " +
-                "last_login_at, locked_until, disabled_at, disabled_reason, created_at, updated_at, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "last_login_at, locked_until, disabled_at, disabled_reason, " +
+                "security_version, security_status, risk_level, mfa_enrolled, phishing_resistant_enrolled, " +
+                "recovery_state, last_security_review_at, " +
+                "created_at, updated_at, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 user.getId(), user.getDisplayName(), user.getStatus(), user.getLocale(), user.getTimezone(),
                 user.getAvatarObjectId(), user.getLastLoginAt(), user.getLockedUntil(), user.getDisabledAt(),
-                user.getDisabledReason(), user.getCreatedAt(), user.getUpdatedAt(), user.getVersion()
+                user.getDisabledReason(),
+                user.getSecurityVersion(), user.getSecurityStatus(), user.getRiskLevel(),
+                user.getMfaEnrolled(), user.getPhishingResistantEnrolled(),
+                user.getRecoveryState(), user.getLastSecurityReviewAt(),
+                user.getCreatedAt(), user.getUpdatedAt(), user.getVersion()
         );
     }
 
@@ -47,10 +54,16 @@ public class JdbcUserRepository implements UserRepository {
         jdbcTemplate.update(
                 "UPDATE identity_user SET display_name = ?, status = ?, locale = ?, timezone = ?, " +
                 "avatar_object_id = ?, last_login_at = ?, locked_until = ?, disabled_at = ?, " +
-                "disabled_reason = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?",
+                "disabled_reason = ?, security_version = ?, security_status = ?, risk_level = ?, " +
+                "mfa_enrolled = ?, phishing_resistant_enrolled = ?, recovery_state = ?, " +
+                "last_security_review_at = ?, updated_at = ?, version = version + 1 " +
+                "WHERE id = ? AND version = ?",
                 user.getDisplayName(), user.getStatus(), user.getLocale(), user.getTimezone(),
                 user.getAvatarObjectId(), user.getLastLoginAt(), user.getLockedUntil(), user.getDisabledAt(),
-                user.getDisabledReason(), user.getUpdatedAt(), user.getId(), user.getVersion()
+                user.getDisabledReason(), user.getSecurityVersion(), user.getSecurityStatus(),
+                user.getRiskLevel(), user.getMfaEnrolled(), user.getPhishingResistantEnrolled(),
+                user.getRecoveryState(), user.getLastSecurityReviewAt(), user.getUpdatedAt(),
+                user.getId(), user.getVersion()
         );
     }
 
@@ -76,6 +89,13 @@ public class JdbcUserRepository implements UserRepository {
             u.setLockedUntil(getNullableLong(rs, "locked_until"));
             u.setDisabledAt(getNullableLong(rs, "disabled_at"));
             u.setDisabledReason(rs.getString("disabled_reason"));
+            u.setSecurityVersion(rs.getLong("security_version"));
+            u.setSecurityStatus(rs.getString("security_status"));
+            u.setRiskLevel(rs.getString("risk_level"));
+            u.setMfaEnrolled(rs.getInt("mfa_enrolled"));
+            u.setPhishingResistantEnrolled(rs.getInt("phishing_resistant_enrolled"));
+            u.setRecoveryState(rs.getString("recovery_state"));
+            u.setLastSecurityReviewAt(getNullableLong(rs, "last_security_review_at"));
             u.setCreatedAt(rs.getLong("created_at"));
             u.setUpdatedAt(rs.getLong("updated_at"));
             u.setVersion(rs.getLong("version"));

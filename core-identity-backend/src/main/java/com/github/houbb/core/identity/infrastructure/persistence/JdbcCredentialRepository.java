@@ -24,11 +24,14 @@ public class JdbcCredentialRepository implements CredentialRepository {
     public void save(Credential credential) {
         jdbcTemplate.update(
                 "INSERT INTO identity_credential (id, user_id, credential_type, secret_hash, algorithm, status, " +
-                "must_change, password_changed_at, failed_attempt_count, created_at, updated_at, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "must_change, password_changed_at, failed_attempt_count, " +
+                "hash_policy_version, last_rehashed_at, compromised_detected_at, " +
+                "created_at, updated_at, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 credential.getId(), credential.getUserId(), credential.getCredentialType(),
                 credential.getSecretHash(), credential.getAlgorithm(), credential.getStatus(),
                 credential.getMustChange(), credential.getPasswordChangedAt(), credential.getFailedAttemptCount(),
+                credential.getHashPolicyVersion(), credential.getLastRehashedAt(), credential.getCompromisedDetectedAt(),
                 credential.getCreatedAt(), credential.getUpdatedAt(), credential.getVersion()
         );
     }
@@ -44,14 +47,16 @@ public class JdbcCredentialRepository implements CredentialRepository {
         }
     }
 
-    @Override
+        @Override
     public void update(Credential credential) {
         jdbcTemplate.update(
                 "UPDATE identity_credential SET secret_hash = ?, algorithm = ?, status = ?, must_change = ?, " +
-                "password_changed_at = ?, failed_attempt_count = ?, updated_at = ?, version = version + 1 " +
+                "password_changed_at = ?, failed_attempt_count = ?, hash_policy_version = ?, " +
+                "last_rehashed_at = ?, compromised_detected_at = ?, updated_at = ?, version = version + 1 " +
                 "WHERE id = ? AND version = ?",
                 credential.getSecretHash(), credential.getAlgorithm(), credential.getStatus(),
                 credential.getMustChange(), credential.getPasswordChangedAt(), credential.getFailedAttemptCount(),
+                credential.getHashPolicyVersion(), credential.getLastRehashedAt(), credential.getCompromisedDetectedAt(),
                 credential.getUpdatedAt(), credential.getId(), credential.getVersion()
         );
     }
@@ -83,7 +88,7 @@ public class JdbcCredentialRepository implements CredentialRepository {
         );
     }
 
-    static class CredentialRowMapper implements RowMapper<Credential> {
+        static class CredentialRowMapper implements RowMapper<Credential> {
         @Override
         public Credential mapRow(ResultSet rs, int rowNum) throws SQLException {
             Credential c = new Credential();
@@ -96,6 +101,9 @@ public class JdbcCredentialRepository implements CredentialRepository {
             c.setMustChange(rs.getInt("must_change"));
             c.setPasswordChangedAt(JdbcUserRepository.getNullableLong(rs, "password_changed_at"));
             c.setFailedAttemptCount(rs.getInt("failed_attempt_count"));
+            c.setHashPolicyVersion(rs.getString("hash_policy_version"));
+            c.setLastRehashedAt(JdbcUserRepository.getNullableLong(rs, "last_rehashed_at"));
+            c.setCompromisedDetectedAt(JdbcUserRepository.getNullableLong(rs, "compromised_detected_at"));
             c.setCreatedAt(rs.getLong("created_at"));
             c.setUpdatedAt(rs.getLong("updated_at"));
             c.setVersion(rs.getLong("version"));

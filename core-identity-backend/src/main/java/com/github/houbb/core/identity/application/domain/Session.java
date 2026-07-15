@@ -4,6 +4,8 @@ package com.github.houbb.core.identity.application.domain;
  * Session domain object — user and admin login sessions.
  *
  * P2 extended fields: lastOrganizationId, permissionVersion.
+ * P4 extended fields: deviceId, authenticationLevel, authenticationMethodsJson,
+ * strongAuthAt, riskLevel, reauthRequiredAt, securityVersion, lastRiskEvaluatedAt.
  */
 public class Session {
 
@@ -22,6 +24,15 @@ public class Session {
     private String revokeReason;
     private String lastOrganizationId;
     private long permissionVersion;
+    // P4 security fields
+    private String deviceId;
+    private String authenticationLevel;
+    private String authenticationMethodsJson;
+    private Long strongAuthAt;
+    private String riskLevel;
+    private Long reauthRequiredAt;
+    private long securityVersion;
+    private Long lastRiskEvaluatedAt;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -59,6 +70,22 @@ public class Session {
     public void setLastOrganizationId(String lastOrganizationId) { this.lastOrganizationId = lastOrganizationId; }
     public long getPermissionVersion() { return permissionVersion; }
     public void setPermissionVersion(long permissionVersion) { this.permissionVersion = permissionVersion; }
+    public String getDeviceId() { return deviceId; }
+    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
+    public String getAuthenticationLevel() { return authenticationLevel; }
+    public void setAuthenticationLevel(String authenticationLevel) { this.authenticationLevel = authenticationLevel; }
+    public String getAuthenticationMethodsJson() { return authenticationMethodsJson; }
+    public void setAuthenticationMethodsJson(String authenticationMethodsJson) { this.authenticationMethodsJson = authenticationMethodsJson; }
+    public Long getStrongAuthAt() { return strongAuthAt; }
+    public void setStrongAuthAt(Long strongAuthAt) { this.strongAuthAt = strongAuthAt; }
+    public String getRiskLevel() { return riskLevel; }
+    public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+    public Long getReauthRequiredAt() { return reauthRequiredAt; }
+    public void setReauthRequiredAt(Long reauthRequiredAt) { this.reauthRequiredAt = reauthRequiredAt; }
+    public long getSecurityVersion() { return securityVersion; }
+    public void setSecurityVersion(long securityVersion) { this.securityVersion = securityVersion; }
+    public Long getLastRiskEvaluatedAt() { return lastRiskEvaluatedAt; }
+    public void setLastRiskEvaluatedAt(Long lastRiskEvaluatedAt) { this.lastRiskEvaluatedAt = lastRiskEvaluatedAt; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

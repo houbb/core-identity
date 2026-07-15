@@ -1,6 +1,208 @@
 # Changelog
 
-## 0.5.0 (2026-07-15) — P3 平台级身份服务
+## 0.6.0 (2026-07-16) — P4 账号安全与零信任基础
+
+### 核心能力
+
+**认证器统一模型**
+- 5 种认证器类型：PASSWORD / TOTP / WEBAUTHN / RECOVERY_CODE_SET / EMAIL_RECOVERY
+- 5 种状态：PENDING → ACTIVE → SUSPENDED / COMPROMISED / REVOKED
+- 3 级认证强度：AUTH_LEVEL_1（密码）→ AUTH_LEVEL_2（密码+TOTP / Passkey）→ AUTH_LEVEL_3（硬件安全密钥）
+- 抗钓鱼标记（phishing_resistant）+ 用户验证能力标记（user_verification_capable）
+- 认证挑战（AuthenticationChallenge）：登录/注册/升级三种类型，状态机管理
+- 升级授权（StepUpGrant）：临时提升认证等级，支持一次性消费和短时复用
+
+**TOTP 多因子认证**
+- RFC 6238 标准 TOTP（aerogear-otp-java 实现，SHA1 / 6 位 / 30 秒周期）
+- QR Code URI 生成（otpauth:// 格式）+ 手动密钥
+- 重放防护（last_accepted_step 记录）
+- TOTP Secret AES-256-GCM 加密存储，独立密钥管理
+- 密钥版本追踪（支持未来密钥轮换）
+- PENDING 注册 → 验证码确认 → ACTIVE 流程
+
+**恢复码**
+- 首次启用 MFA 时自动生成 10 个恢复码
+- SHA-256 Hash 存储，明文仅展示一次
+- 支持重新生成（旧码全部失效）
+- 一次性使用，使用后立即标记 USED
+
+**WebAuthn / Passkey**
+- 完全自实现（无外部 WebAuthn 库依赖）：
+  - COSE_Key 解析器（EC2 P-256 + RSA 公钥提取）
+  - WebAuthn 签名验证（SHA256withECDSA / SHA256withRSA）
+  - 最小 CBOR 解码器
+- 注册流程：create PENDING Authenticator → navigator.credentials.create() → verify attestation + signature → ACTIVE
+- 认证流程：generate assertion options → navigator.credentials.get() → verify signature + challenge → 登录成功
+- Origin / RP ID 验证
+- Sign Count 追踪 + 备份状态记录
+
+**设备上下文**
+- Device 实体：Cookie Hash 标识、浏览器/OS 解析、首次/最近见到时间
+- 不收集精确 GPS / 字体列表 / Canvas 指纹
+
+**风险引擎**
+- 规则化评分引擎（非 ML），完全可解释
+- 风险信号：新设备(+20)、IP 变化(+15)、快速 IP 切换(+25)、多次失败(+25)、密码喷洒(+20)、特权账号(+20)、凭证填充(+30)、Refresh Token 重放(+90)
+- 4 级风险：LOW → MEDIUM（要求 MFA）→ HIGH（要求抗钓鱼认证）→ CRITICAL（阻止+撤销会话）
+- 可配置阈值（medium/high/critical）
+- 机器可读原因码：NEW_DEVICE / IP_CHANGED / RAPID_IP_CHANGES / MULTIPLE_FAILURES / PASSWORD_SPRAY_SUSPECTED 等
+
+**安全事件中心**
+- SecurityEvent 实体：用户/组织级安全事件记录
+- 严重级别：INFO / LOW / MEDIUM / HIGH / CRITICAL
+- 生命周期：OPEN → INVESTIGATING → RESOLVED / FALSE_POSITIVE
+- CRITICAL 事件自动创建（登录阻止、Refresh Token 重放）
+
+**账号恢复**
+- 3 级恢复模型：
+  - Level 1：拥有认证器 → 自助恢复
+  - Level 2：丢失认证器但有邮箱+密码 → 30 分钟冷静期
+  - Level 3：全部丢失 → 管理员审核
+- 恢复完成后：security_version+1 → 全部 Session 失效 → Refresh Token 撤销 → 旧认证器暂停 → 强制重设密码
+
+**组织安全策略**
+- SecurityPolicy 实体：MFA 要求、抗钓鱼要求、允许的认证器类型、受信设备天数、会话时长
+- 策略状态：DRAFT → ENFORCING（14 天宽限期）→ ACTIVE / SUSPENDED
+- 发布前预览受影响成员数量
+- SecurityExemption：临时豁免，必须有过期时间
+
+**登录攻击防护**
+- 多维限流：USER / EMAIL_HASH / IP / DEVICE / CLIENT
+- LoginThrottle 持久化记录
+- 渐进式延迟而非固定阈值硬锁
+
+**密码安全升级**
+- CompromisedPasswordChecker 接口（本地常见密码列表 + 可选 HIBP API）
+- 密码泄露检测集成点
+- 透明重新哈希（Hash 参数低于安全策略时自动升级）
+
+---
+
+### core-identity-backend
+
+**新增 17 张数据表**
+
+| 表名 | 用途 |
+|---|---|
+| `identity_authenticator` | 统一认证器注册表 |
+| `identity_totp_authenticator` | TOTP Secret（AES-256-GCM 加密） |
+| `identity_webauthn_credential` | WebAuthn 公钥凭证 |
+| `identity_recovery_code_set` | 恢复码集合 |
+| `identity_recovery_code` | 恢复码 Hash |
+| `identity_authentication_challenge` | 认证挑战（登录/注册/升级） |
+| `identity_step_up_grant` | 升级授权令牌 |
+| `identity_device` | 用户设备记录 |
+| `identity_risk_assessment` | 风险评估结果 |
+| `identity_risk_signal` | 风险信号详情 |
+| `identity_security_event` | 安全事件 |
+| `identity_security_policy` | 组织安全策略 |
+| `identity_security_exemption` | 策略豁免 |
+| `identity_account_recovery` | 账号恢复流程 |
+| `identity_login_throttle` | 多维登录限流 |
+
+**扩展 3 张表**
+
+| 表名 | 新增字段 |
+|---|---|
+| `identity_user` | security_version, security_status, risk_level, mfa_enrolled, phishing_resistant_enrolled, recovery_state, last_security_review_at |
+| `identity_session` | device_id, authentication_level, authentication_methods_json, strong_auth_at, risk_level, reauth_required_at, security_version, last_risk_evaluated_at |
+| `identity_credential` | hash_policy_version, last_rehashed_at, compromised_detected_at |
+
+**P3→P4 数据迁移**
+- BACKFILL：现有 PASSWORD credential 自动映射为 PASSWORD Authenticator
+
+**新增 Domain 对象 × 17**
+`Authenticator`, `AuthenticationChallenge`, `StepUpGrant`, `TotpAuthenticator`, `RecoveryCodeSet`, `RecoveryCode`, `WebAuthnCredential`, `Device`, `RiskAssessment`, `SecurityEvent`, `AccountRecovery`, `SecurityPolicy`
+
+**新增 Port 接口 × 10**
+`AuthenticatorRepository`, `AuthenticationChallengeRepository`, `StepUpGrantRepository`, `TotpAuthenticatorRepository`, `RecoveryCodeSetRepository`, `RecoveryCodeRepository`, `WebAuthnCredentialRepository`, `DeviceRepository`, `CompromisedPasswordChecker`
+
+**新增 Application Service × 8**
+- `AuthenticatorService` / `AuthenticatorServiceImpl`：认证器生命周期（createPending → activate → suspend → markCompromised → revoke），有效认证等级计算
+- `TotpService` / `TotpServiceImpl`：TOTP 注册/确认/验证/取消，重放防护
+- `RecoveryCodeService` / `RecoveryCodeServiceImpl`：恢复码生成/验证/状态查询/重新生成
+- `WebAuthnService` / `WebAuthnServiceImpl`：Passkey 注册/认证，自实现密码学
+- `RiskEngine`：规则化风险评估，可配置阈值，安全事件自动创建
+- `AccountRecoveryService`：分级恢复流程，30 分钟冷静期，完成后全局撤销
+- `SecurityPolicyService`：策略 CRUD，DRAFT→ENFORCING(14天宽限期)→ACTIVE
+
+**新增 Infrastructure**
+- `TotpSecretEncryptor`：AES-256-GCM 加密/解密 TOTP Secret
+- `CoseKeyParser`：COSE_Key（RFC 8152）→ java.security.PublicKey
+- `WebAuthnSignatureVerifier`：ECDSA / RS256 签名验证
+- `JdbcSecurityEventRepository`：安全事件 JDBC 持久化
+
+**Public API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `GET` | `/api/v1/identity/me/authenticators` | 列出认证器 |
+| `DELETE` | `/api/v1/identity/me/authenticators/{id}` | 删除认证器 |
+| `POST` | `/api/v1/identity/me/authenticators/{id}/rename` | 重命名 |
+| `POST` | `/api/v1/identity/me/authenticators/{id}/report-compromised` | 报告泄露 |
+| `POST` | `/api/v1/identity/me/authenticators/totp/enroll` | TOTP 注册 |
+| `POST` | `/api/v1/identity/me/authenticators/totp/confirm` | TOTP 确认 |
+| `POST` | `/api/v1/identity/me/authenticators/totp/cancel` | TOTP 取消 |
+| `POST` | `/api/v1/identity/webauthn/registration/options` | WebAuthn 注册选项 |
+| `POST` | `/api/v1/identity/webauthn/registration/verify` | WebAuthn 注册验证 |
+| `POST` | `/api/v1/identity/webauthn/authentication/options` | WebAuthn 认证选项 |
+| `POST` | `/api/v1/identity/webauthn/authentication/verify` | WebAuthn 认证验证 |
+| `POST` | `/api/v1/identity/me/recovery-codes` | 生成恢复码 |
+| `GET` | `/api/v1/identity/me/recovery-codes/status` | 恢复码状态 |
+| `GET` | `/api/v1/identity/me/security-events` | 安全事件列表 |
+| `POST` | `/api/v1/identity/me/security-events/{id}/confirm` | 确认事件 |
+| `POST` | `/api/v1/identity/me/security-events/{id}/report` | 报告事件 |
+| `POST` | `/api/v1/identity/account-recoveries` | 发起账号恢复 |
+| `GET` | `/api/v1/identity/account-recoveries/{id}` | 恢复状态 |
+| `POST` | `/api/v1/identity/account-recoveries/{id}/verify` | 恢复验证 |
+| `POST` | `/api/v1/identity/account-recoveries/{id}/cancel` | 取消恢复 |
+| `POST` | `/api/v1/identity/account-recoveries/{id}/complete` | 完成恢复 |
+| `GET` | `/api/v1/identity/organizations/{id}/security-policy` | 查看安全策略 |
+| `PUT` | `/api/v1/identity/organizations/{id}/security-policy` | 更新安全策略 |
+| `POST` | `/api/v1/identity/organizations/{id}/security-policy/publish` | 发布策略 |
+| `POST` | `/api/v1/identity/organizations/{id}/security-policy/suspend` | 暂停策略 |
+
+**Admin API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `GET` | `/admin-api/v1/identity/security/overview` | 安全总览 |
+| `GET` | `/admin-api/v1/identity/security/events` | 安全事件列表 |
+| `GET` | `/admin-api/v1/identity/security/risky-users` | 风险用户 |
+| `GET` | `/admin-api/v1/identity/security/users/{id}` | 用户安全详情 |
+| `POST` | `/admin-api/v1/identity/security/users/{id}/lock` | 紧急锁定 |
+| `POST` | `/admin-api/v1/identity/security/users/{id}/unlock` | 解锁 |
+| `POST` | `/admin-api/v1/identity/security/users/{id}/revoke-sessions` | 撤销所有会话 |
+| `POST` | `/admin-api/v1/identity/security/users/{id}/require-password-reset` | 要求重置密码 |
+| `POST` | `/admin-api/v1/identity/security/users/{id}/require-mfa-reset` | 要求重置 MFA |
+| `GET` | `/admin-api/v1/identity/security/recoveries` | 待处理恢复 |
+| `POST` | `/admin-api/v1/identity/security/recoveries/{id}/approve` | 批准恢复 |
+| `POST` | `/admin-api/v1/identity/security/recoveries/{id}/reject` | 拒绝恢复 |
+| `GET` | `/admin-api/v1/identity/security/authenticator-metrics` | 认证器统计 |
+| `GET` | `/admin-api/v1/identity/security/login-metrics` | 登录统计 |
+
+**依赖变更**
+- 新增 `org.jboss.aerogear:aerogear-otp-java:1.0.0`（TOTP RFC 6238 实现）
+
+**Flyway 迁移**
+- 新增 22 个 MySQL 迁移文件（V0_4_0_100 ~ V0_4_0_161）
+- SQLite 迁移并行维护（含合并迁移文件）
+
+---
+
+### 编译状态
+
+- 232 个 Java 源文件全部编译通过（BUILD SUCCESS）
+
+---
+
+### AGENTS.md 更新
+
+- 新增「沟通语言」章节：强制全程中文沟通
+- Unknowns Management 重写：外部 Skill 依赖改为内联流程（识别→分类→提问→记录），确保 Skill 不存在时仍可执行
+- 触发条件新增「任何 P0-P7 设计文档的实现任务」
+
+
 
 ### 核心能力
 

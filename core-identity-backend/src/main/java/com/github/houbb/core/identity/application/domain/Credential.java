@@ -2,6 +2,8 @@ package com.github.houbb.core.identity.application.domain;
 
 /**
  * Credential domain object — password credentials.
+ *
+ * P4 extended fields: hashPolicyVersion, lastRehashedAt, compromisedDetectedAt.
  */
 public class Credential {
 
@@ -14,6 +16,10 @@ public class Credential {
     private int mustChange;
     private Long passwordChangedAt;
     private int failedAttemptCount;
+    // P4 fields
+    private String hashPolicyVersion;
+    private Long lastRehashedAt;
+    private Long compromisedDetectedAt;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -39,6 +45,12 @@ public class Credential {
     public void setPasswordChangedAt(Long passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
     public int getFailedAttemptCount() { return failedAttemptCount; }
     public void setFailedAttemptCount(int failedAttemptCount) { this.failedAttemptCount = failedAttemptCount; }
+    public String getHashPolicyVersion() { return hashPolicyVersion; }
+    public void setHashPolicyVersion(String hashPolicyVersion) { this.hashPolicyVersion = hashPolicyVersion; }
+    public Long getLastRehashedAt() { return lastRehashedAt; }
+    public void setLastRehashedAt(Long lastRehashedAt) { this.lastRehashedAt = lastRehashedAt; }
+    public Long getCompromisedDetectedAt() { return compromisedDetectedAt; }
+    public void setCompromisedDetectedAt(Long compromisedDetectedAt) { this.compromisedDetectedAt = compromisedDetectedAt; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

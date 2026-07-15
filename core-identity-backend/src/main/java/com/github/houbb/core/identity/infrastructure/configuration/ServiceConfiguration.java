@@ -4,6 +4,7 @@ import com.github.houbb.core.identity.application.port.*;
 import com.github.houbb.core.identity.application.service.*;
 import com.github.houbb.core.identity.infrastructure.cache.CaffeineCacheManager;
 import com.github.houbb.core.identity.infrastructure.security.BCryptPasswordHasher;
+import com.github.houbb.core.identity.infrastructure.security.TotpSecretEncryptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -241,5 +242,92 @@ public class ServiceConfiguration {
                                                       CaffeineCacheManager cacheManager) {
         return new AuthorizationServiceImpl(orgRepo, membershipRepo, membershipRoleRepo,
                 rolePermissionRepo, roleRepo, cacheManager);
+    }
+
+    // === P4.1 Authenticator ===
+
+    @Bean
+    public AuthenticatorService authenticatorService(AuthenticatorRepository authenticatorRepo) {
+        return new AuthenticatorServiceImpl(authenticatorRepo);
+    }
+
+    // === P4.2 TOTP + Recovery Codes ===
+
+    @Value("${core.totp.encryption-key:dev-totp-key-32-bytes-for-aes256!!}")
+    private String totpEncryptionKey;
+
+    @Bean
+    public TotpSecretEncryptor totpSecretEncryptor() {
+        return new TotpSecretEncryptor(totpEncryptionKey);
+    }
+
+    @Bean
+    public RecoveryCodeService recoveryCodeService(RecoveryCodeSetRepository codeSetRepo,
+                                                    RecoveryCodeRepository codeRepo) {
+        return new RecoveryCodeServiceImpl(codeSetRepo, codeRepo);
+    }
+
+    @Bean
+    public TotpService totpService(TotpAuthenticatorRepository totpRepo,
+                                   AuthenticatorRepository authenticatorRepo,
+                                   AuthenticatorService authenticatorService,
+                                   RecoveryCodeService recoveryCodeService,
+                                   TotpSecretEncryptor encryptor) {
+        return new TotpServiceImpl(totpRepo, authenticatorRepo, authenticatorService, recoveryCodeService, encryptor);
+    }
+
+    // === P4.3 WebAuthn / Passkey ===
+
+    @Value("${core.webauthn.rp-id:localhost}")
+    private String webauthnRpId;
+
+    @Value("${core.webauthn.rp-name:Core Identity}")
+    private String webauthnRpName;
+
+    @Value("${core.webauthn.origin:http://localhost:5173}")
+    private String webauthnOrigin;
+
+    @Bean
+    public WebAuthnService webAuthnService(WebAuthnCredentialRepository credentialRepo,
+                                          AuthenticatorService authenticatorService,
+                                          AuthenticatorRepository authenticatorRepo,
+                                          UserRepository userRepo,
+                                          UserEmailRepository emailRepo,
+                                          AuthenticationChallengeRepository challengeRepo) {
+        return new WebAuthnServiceImpl(credentialRepo, authenticatorService, authenticatorRepo,
+                userRepo, emailRepo, challengeRepo, webauthnRpId, webauthnRpName, webauthnOrigin);
+    }
+
+    // === P4.5 Risk Engine ===
+
+    @Value("${core.risk.medium-threshold:30}")
+    private int riskMediumThreshold;
+
+    @Value("${core.risk.high-threshold:60}")
+    private int riskHighThreshold;
+
+    @Value("${core.risk.critical-threshold:85}")
+    private int riskCriticalThreshold;
+
+    @Bean
+    public RiskEngine riskEngine(SecurityEventRepository securityEventRepo) {
+        return new RiskEngine(securityEventRepo, riskMediumThreshold, riskHighThreshold, riskCriticalThreshold);
+    }
+
+    // === P4.6 Account Recovery ===
+
+    @Bean
+    public AccountRecoveryService accountRecoveryService(AccountRecoveryRepository recoveryRepo,
+                                                         UserRepository userRepo,
+                                                         SessionRepository sessionRepo,
+                                                         SecurityEventRepository securityEventRepo) {
+        return new AccountRecoveryService(recoveryRepo, userRepo, sessionRepo, securityEventRepo);
+    }
+
+    // === P4.7 Security Policy ===
+
+    @Bean
+    public SecurityPolicyService securityPolicyService(SecurityPolicyRepository policyRepo) {
+        return new SecurityPolicyService(policyRepo);
     }
 }

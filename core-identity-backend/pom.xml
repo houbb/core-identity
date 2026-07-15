@@ -84,6 +84,13 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- TOTP (RFC 6238) -->
+        <dependency>
+            <groupId>org.jboss.aerogear</groupId>
+            <artifactId>aerogear-otp-java</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

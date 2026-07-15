@@ -1,0 +1,4 @@
+-- V0.4.0.102: Extend identity_credential with P4 columns (SQLite)
+ALTER TABLE identity_credential ADD COLUMN hash_policy_version VARCHAR(30);
+ALTER TABLE identity_credential ADD COLUMN last_rehashed_at BIGINT;
+ALTER TABLE identity_credential ADD COLUMN compromised_detected_at BIGINT;
