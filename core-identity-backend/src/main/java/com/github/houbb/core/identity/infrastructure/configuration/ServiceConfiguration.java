@@ -2,6 +2,7 @@ package com.github.houbb.core.identity.infrastructure.configuration;
 
 import com.github.houbb.core.identity.application.port.*;
 import com.github.houbb.core.identity.application.service.*;
+import com.github.houbb.core.identity.infrastructure.security.BCryptPasswordHasher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,5 +54,30 @@ public class ServiceConfiguration {
     @Bean
     public IdempotencyService idempotencyService(IdempotencyRecordRepository repository) {
         return new IdempotencyServiceImpl(repository, recordTtlHours);
+    }
+
+    @Bean
+    public PasswordHasher passwordHasher() {
+        return new BCryptPasswordHasher();
+    }
+
+    @Bean
+    public AuthService authService(UserRepository userRepo,
+                                   UserEmailRepository emailRepo,
+                                   CredentialRepository credentialRepo,
+                                   OrganizationRepository orgRepo,
+                                   MembershipRepository membershipRepo,
+                                   SessionRepository sessionRepo,
+                                   OneTimeTokenRepository tokenRepo,
+                                   LoginAttemptRepository loginAttemptRepo,
+                                   PlatformOperatorRepository operatorRepo,
+                                   AuditService auditService,
+                                   OutboxService outboxService,
+                                   IdempotencyService idempotencyService,
+                                   PasswordHasher passwordHasher,
+                                   IdentityNotificationPort notificationPort) {
+        return new AuthServiceImpl(userRepo, emailRepo, credentialRepo, orgRepo, membershipRepo,
+                sessionRepo, tokenRepo, loginAttemptRepo, operatorRepo,
+                auditService, outboxService, idempotencyService, passwordHasher, notificationPort);
     }
 }

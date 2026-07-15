@@ -19,3 +19,13 @@ core:
     max-attempts: 5
   idempotency:
     record-ttl-hours: 24
+  login:
+    max-failed-attempts: 5
+    lock-duration: 15m
+    ip-rate-limit: 20
+    ip-rate-window: 1m
+  session:
+    idle-timeout-hours: 2
+    absolute-timeout-hours: 24
+  password:
+    min-length: 8
