@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS identity_approval_instance (
     status          TEXT    NOT NULL DEFAULT 'PENDING',
     current_step    INTEGER NOT NULL DEFAULT 0,
     created_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL DEFAULT 0,
     completed_at    INTEGER,
     version         INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (id)

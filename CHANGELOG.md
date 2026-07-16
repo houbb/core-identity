@@ -1,5 +1,161 @@
 # Changelog
 
+## 0.8.0 (2026-07-16) — P6 企业治理与合规
+
+### 核心能力
+
+**访问治理 (Access Governance)**
+- Access Package（访问套餐）：将相关权益打包为 STANDARD / PRIVILEGED / TEMPORARY / EXTERNAL / EMERGENCY 五种类型
+- Access Request（访问申请）：用户通过套餐申请访问权限，含业务理由、工单引用、有效期
+- 多级审批流程：支持 SINGLE / ALL / ANY_N / SEQUENTIAL / PARALLEL 五种审批模式
+- 审批决定只追加不覆盖（`identity_approval_decision`），防止审批被篡改
+- 自动授予 (Grant) 与自动到期
+
+**权限来源追溯**
+- 每项权限可追溯至：Built-in Role / SCIM Group / Access Request / Direct Grant / Emergency Grant
+- `identity_access_grant` 记录完整的授予链：谁批准、何时生效、何时到期、来源是什么
+
+**特权访问 (Privileged Access / JIT)**
+- Eligible / Active 双状态模型：用户长期拥有激活资格，但特权仅在排障时临时激活
+- 激活需业务理由 + 工单编号 + 强认证等级（AUTH_LEVEL_2/3）
+- 最长激活时长限制（默认 4 小时），超时自动结束
+- `identity_privileged_activation` 记录完整激活生命周期
+
+**职责分离 (Separation of Duties)**
+- 静态 SoD 策略：定义互斥的 Entitlement 对（如"创建退款" X "批准退款"）
+- 自动冲突检测：授予或激活时扫描所有活跃 SoD 策略
+- 冲突例外管理：需风险说明 + 补偿性控制 + 审批人 + 有效期
+- 例外不能永久无期限存在
+
+**访问审查 (Access Review)**
+- Campaign 审查活动：支持 USER_ACCESS / ROLE_MEMBERSHIP / PRIVILEGED_ACCESS 等类型
+- 审查决定：CERTIFY / REVOKE / MODIFY / DELEGATE / NOT_SURE
+- REVOKE 决定自动撤销对应 Grant
+- 审查项按高风险/长期未使用/外部成员等维度分组
+
+**管理员分权 (Platform Operator Role Separation)**
+- 从单一 SUPER_ADMIN 拆分为 8 个细分角色：
+  - IDENTITY_ADMIN / SECURITY_ADMIN / AUDIT_ADMIN / SUPPORT_ADMIN / PRIVACY_ADMIN / COMPLIANCE_ADMIN / APPLICATION_ADMIN / READ_ONLY_ADMIN
+- 审计员默认只读，不能修改被审计对象
+
+**合规与证据 (Compliance & Evidence)**
+- 合规控制目录 (Compliance Control Catalog)：Framework → Requirement → Control → Mapping 通用模型
+- 控制状态：PLANNED → IMPLEMENTED → OPERATING → INEFFECTIVE → NOT_APPLICABLE
+- 控制测试：AUTOMATED / MANUAL / HYBRID 三种方式
+- Finding 管理：从检测到整改关闭的完整生命周期
+- 审计证据记录：支持 CONFIGURATION / ACCESS_SNAPSHOT / REVIEW_RESULT 等 9 种证据类型
+- 证据校验和 (checksum) + 签名 (signature) 防篡改
+
+**隐私与数据生命周期 (Privacy & Data Lifecycle)**
+- 隐私请求 (Privacy Request)：ACCESS / EXPORT / ERASURE / RESTRICTION 等 8 种类型
+- 请求状态流转：SUBMITTED → IDENTITY_VERIFICATION → IN_PROGRESS → COMPLETED / PARTIALLY_COMPLETED / REJECTED
+- 跨 Core 删除编排：Privacy Request → Data Lifecycle Job → 各 Core Task → 聚合完成报告
+- 数据保留策略 (Retention Policy)：按数据类别 + 触发事件 + 保留期限 + 到期动作
+- 法律保留 (Legal Hold)：诉讼/调查/监管要求，可作用于用户/组织/数据类别/时间范围
+- Legal Hold 优先级最高，可阻止删除和匿名化
+
+---
+
+### core-identity-backend
+
+**新增数据库迁移（MySQL + SQLite，双配置）**
+
+| 迁移编号 | 表名 | 用途 |
+|---|---|---|
+| V0_6_0_003 | `identity_access_package` | 访问套餐定义 |
+| V0_6_0_004 | `identity_access_package_entitlement` | 套餐-权益多对多关联 |
+| V0_6_0_005 | `identity_access_request` | 访问申请记录 |
+| V0_6_0_006 | `identity_approval_instance` | 审批实例 |
+| V0_6_0_007 | `identity_approval_step` | 审批步骤 |
+| V0_6_0_008 | `identity_approval_decision` | 审批决定（只追加） |
+| V0_6_0_010 | `identity_privileged_activation` | 特权激活记录 |
+| V0_6_0_020 | `identity_sod_policy` | SoD 策略定义 |
+| V0_6_0_021 | `identity_sod_policy_item` | SoD 策略项（互斥对） |
+| V0_6_0_022 | `identity_sod_conflict` | SoD 冲突记录 |
+| V0_6_0_023 | `identity_sod_exception` | SoD 冲突例外 |
+| V0_6_0_030 | `identity_access_review_campaign` | 访问审查活动 |
+| V0_6_0_031 | `identity_access_review_item` | 审查项 |
+| V0_6_0_032 | `identity_access_review_decision` | 审查决定 |
+| V0_6_0_040 | `identity_platform_operator_role` | 平台管理员角色分配 |
+| V0_6_0_050 | 合规表 (6 in 1) | `identity_compliance_control` + `_framework` + `_mapping` + `_assessment` + `_finding` + `_evidence` |
+| V0_6_0_060 | 隐私表 (6 in 1) | `identity_privacy_request` + `_task` + `_legal_hold` + `_legal_hold_scope` + `_retention_policy` + `_processing_activity` |
+
+**新增 Domain 实体 × 6**
+`SodPolicy`、`PrivilegedActivation`（另有 8 个 P6.1 实体此前已部分存在：AccessPackage、AccessPackageEntitlement、AccessRequest、ApprovalInstance、ApprovalStep、ApprovalDecision、Entitlement、AccessGrant）
+
+**新增 Repository 接口 × 16（`application/port/`）**
+`AccessPackageRepository`、`AccessPackageEntitlementRepository`、`AccessRequestRepository`、`ApprovalInstanceRepository`、`ApprovalStepRepository`、`ApprovalDecisionRepository`、`PrivilegedActivationRepository`、`SodPolicyRepository`、`SodDataRepository`、`AccessReviewDataRepository`、`PlatformOperatorRoleRepository`、`ComplianceDataRepository`、`PrivacyDataRepository`
+
+**新增 JDBC 实现 × 16（`infrastructure/persistence/`）**
+全部遵循 `@Repository` + `JdbcTemplate` 注入 + RowMapper 内类模式
+
+**新增 Application Service × 9**
+- `AccessPackageService` / `AccessPackageServiceImpl` — 套餐 CRUD + 权益关联管理
+- `AccessRequestService` / `AccessRequestServiceImpl` — 申请提交 + 取消 + 查询
+- `ApprovalService` — 审批流程创建 + 多步骤决定 + 状态流转
+- `PrivilegedAccessService` / `PrivilegedAccessServiceImpl` — 特权激活 + 时长限制 + 自动过期
+- `SodService` — 策略管理 + 冲突检测 + 例外处理
+- `AccessReviewService` — Campaign 创建 + 审查项生成 + 决定记录 + 自动整改
+- `AdminRoleService` — 管理员角色分配/撤销/查询
+- `ComplianceService` — 控制创建 + Framework 导入 + Finding 管理 + 证据记录 + 评估
+- `PrivacyService` — 隐私请求提交 + 身份验证 + 审批 + 保留策略 + Legal Hold
+
+**架构约束**
+- 所有 `application` 层服务零直接 JdbcTemplate 依赖，全部通过 Repository 接口隔离
+- ArchUnit 测试确保 `application` 不依赖 `org.springframework.jdbc`
+
+**Public API 新增**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `GET/POST` | `/api/v1/identity/organizations/{orgId}/access-packages` | 套餐列表/创建 |
+| `GET/PATCH/DELETE` | `.../access-packages/{id}` | 套餐详情/更新/删除 |
+| `PUT` | `.../access-packages/{id}/entitlements` | 设置套餐权益 |
+| `GET/POST` | `/api/v1/identity/me/access-requests` | 我的申请列表/提交 |
+| `GET` | `/api/v1/identity/me/access-requests/{id}` | 申请详情 |
+| `POST` | `/api/v1/identity/me/access-requests/{id}/cancel` | 取消申请 |
+| `POST` | `/api/v1/identity/me/approvals/{stepId}/approve` | 批准 |
+| `POST` | `/api/v1/identity/me/approvals/{stepId}/reject` | 拒绝 |
+| `GET` | `/api/v1/identity/me/eligible-access` | 可激活特权列表 |
+| `GET/POST` | `/api/v1/identity/me/privileged-activations` | 特权激活列表/激活 |
+| `POST` | `/api/v1/identity/me/privileged-activations/{id}/end` | 结束特权 |
+| `GET/POST` | `/api/v1/identity/organizations/{orgId}/sod-policies` | SoD 策略列表/创建 |
+| `POST` | `.../sod-policies/{id}/items` | 添加 SoD 策略项 |
+| `GET` | `/api/v1/identity/organizations/{orgId}/sod-conflicts` | SoD 冲突列表 |
+| `POST` | `.../sod-conflicts/{id}/accept-risk` | 接受风险例外 |
+| `POST` | `.../sod-conflicts/{id}/resolve` | 解决冲突 |
+| `GET/POST` | `/api/v1/identity/organizations/{orgId}/access-reviews` | 审查活动列表/创建 |
+| `POST` | `.../access-reviews/{id}/launch` | 启动审查 |
+| `POST` | `.../access-reviews/{id}/close` | 完成审查 |
+| `GET` | `.../access-reviews/{id}` | 审查活动详情 |
+| `GET` | `.../access-reviews/{id}/items` | 审查项列表 |
+| `POST` | `/api/v1/identity/me/access-reviews/{id}/decisions` | 记录审查决定 |
+
+---
+
+### 测试
+
+- **P6GovernanceUnitTest**（30 个测试）：覆盖 9 个服务
+  - AccessPackage: 5 测试（创建 + 空名称拒绝 + 按组织查询 + 权益管理 + 删除）
+  - AccessRequest: 3 测试（提交 + 取消自己的 + 不能取消别人的）
+  - PrivilegedAccess: 4 测试（激活 + 超长拒绝 + 空理由拒绝 + 提前结束）
+  - SoD: 2 测试（创建策略 + 添加策略项）
+  - AccessReview: 2 测试（创建活动 + 启动生成审查项）
+  - AdminRole: 3 测试（分配 + 拒绝无效角色 + 撤销）
+  - Compliance: 3 测试（创建控制 + 创建 Finding + 记录证据）
+  - Privacy: 5 测试（隐私请求 + 保留策略 + Legal Hold 创建/释放 + 处理活动）
+  - Approval: 3 测试（创建流程 + 批准通过 + 拒绝）
+
+- **架构测试**：ArchUnit 验证 `application` 层不依赖 `org.springframework.jdbc`（0 违反）
+- **回归测试**：全部 92 个测试通过，P0–P5 已有功能零回归
+
+```
+Tests run: 92, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
 ## 0.7.0 (2026-07-16) — P5 企业 SSO 与身份联合
 
 ### 核心能力

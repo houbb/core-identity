@@ -14,6 +14,7 @@ public class ApprovalInstance {
     private int currentStep;
     private long createdAt;
     private long completedAt;
+    private long updatedAt;
     private long version;
 
     public ApprovalInstance() {
@@ -33,6 +34,8 @@ public class ApprovalInstance {
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getCompletedAt() { return completedAt; }
     public void setCompletedAt(long completedAt) { this.completedAt = completedAt; }
+    public long getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
     public long getVersion() { return version; }
     public void setVersion(long version) { this.version = version; }
 }

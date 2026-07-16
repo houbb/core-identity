@@ -354,4 +354,57 @@ public class ServiceConfiguration {
         return new FederationServiceImpl(connRepo, domainRepo, verificationRepo, orgRepo,
                 auditService, outboxService);
     }
+
+    // ====================================================================
+    // === P6 Governance =================================================
+    // ====================================================================
+
+    @Bean
+    public AccessPackageService accessPackageService(AccessPackageRepository packageRepo,
+                                                      AccessPackageEntitlementRepository pkgEntRepo) {
+        return new AccessPackageServiceImpl(packageRepo, pkgEntRepo);
+    }
+
+    @Bean
+    public AccessRequestService accessRequestService(AccessRequestRepository requestRepo,
+                                                      AccessPackageRepository packageRepo) {
+        return new AccessRequestServiceImpl(requestRepo, packageRepo);
+    }
+
+    @Bean
+    public ApprovalService approvalService(ApprovalInstanceRepository instanceRepo,
+                                            ApprovalStepRepository stepRepo,
+                                            ApprovalDecisionRepository decisionRepo) {
+        return new ApprovalService(instanceRepo, stepRepo, decisionRepo);
+    }
+
+    @Bean
+    public PrivilegedAccessService privilegedAccessService(PrivilegedActivationRepository activationRepo) {
+        return new PrivilegedAccessServiceImpl(activationRepo);
+    }
+
+    @Bean
+    public SodService sodService(SodPolicyRepository policyRepo, SodDataRepository dataRepo) {
+        return new SodService(policyRepo, dataRepo);
+    }
+
+    @Bean
+    public AccessReviewService accessReviewService(AccessReviewDataRepository reviewDataRepo) {
+        return new AccessReviewService(reviewDataRepo);
+    }
+
+    @Bean
+    public AdminRoleService adminRoleService(PlatformOperatorRoleRepository roleRepo) {
+        return new AdminRoleService(roleRepo);
+    }
+
+    @Bean
+    public ComplianceService complianceService(ComplianceDataRepository complianceDataRepo) {
+        return new ComplianceService(complianceDataRepo);
+    }
+
+    @Bean
+    public PrivacyService privacyService(PrivacyDataRepository privacyDataRepo) {
+        return new PrivacyService(privacyDataRepo);
+    }
 }
