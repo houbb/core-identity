@@ -3,6 +3,7 @@ package com.github.houbb.core.identity.api.exception;
 import com.github.houbb.core.identity.api.response.ErrorResponse;
 import com.github.houbb.core.identity.application.service.*;
 import com.github.houbb.core.identity.application.service.AuthServiceImpl;
+import com.github.houbb.core.identity.application.service.FederationServiceImpl;
 import com.github.houbb.core.identity.application.service.InternalTokenServiceImpl;
 import com.github.houbb.core.identity.application.service.OAuthAuthorizationService;
 import com.github.houbb.core.identity.application.service.OAuthClientService;
@@ -110,6 +111,49 @@ public class GlobalExceptionHandler {
             default -> 500;
         };
         ErrorResponse error = ErrorResponse.of(status, "Invitation error", e.getMessage(), e.getErrorCode(), "");
+        return ResponseEntity.status(status).body(error);
+    }
+
+    // === P5 Federation Exception ===
+
+    @ExceptionHandler(FederationServiceImpl.FederationException.class)
+    public ResponseEntity<ErrorResponse> handleFederationException(FederationServiceImpl.FederationException e) {
+        int status = switch (e.getErrorCode()) {
+            case "IDENTITY_FEDERATION_CONNECTION_NOT_FOUND",
+                 "IDENTITY_DOMAIN_NOT_VERIFIED",
+                 "IDENTITY_EXTERNAL_IDENTITY_NOT_FOUND" -> 404;
+            case "IDENTITY_FEDERATION_CONNECTION_NOT_ACTIVE",
+                 "IDENTITY_SSO_REQUIRED",
+                 "IDENTITY_SSO_POLICY_VIOLATION" -> 403;
+            case "IDENTITY_DOMAIN_CONFLICT",
+                 "IDENTITY_EXTERNAL_IDENTITY_CONFLICT",
+                 "IDENTITY_SCIM_RESOURCE_CONFLICT" -> 409;
+            case "IDENTITY_FEDERATION_CONFIGURATION_INVALID",
+                 "IDENTITY_OIDC_STATE_INVALID",
+                 "IDENTITY_OIDC_NONCE_INVALID",
+                 "IDENTITY_OIDC_REQUIRED_CLAIM_MISSING",
+                 "IDENTITY_SAML_RESPONSE_INVALID" -> 400;
+            case "IDENTITY_OIDC_ID_TOKEN_INVALID",
+                 "IDENTITY_SAML_SIGNATURE_INVALID",
+                 "IDENTITY_SCIM_UNAUTHORIZED" -> 401;
+            case "IDENTITY_OIDC_DISCOVERY_FAILED",
+                 "IDENTITY_FEDERATION_PROVIDER_UNAVAILABLE" -> 502;
+            case "IDENTITY_SAML_ASSERTION_EXPIRED",
+                 "IDENTITY_SAML_CERTIFICATE_EXPIRED" -> 410;
+            case "IDENTITY_SAML_RESPONSE_REPLAYED" -> 409;
+            case "IDENTITY_JIT_DISABLED" -> 403;
+            case "IDENTITY_JIT_DOMAIN_DENIED" -> 403;
+            case "IDENTITY_JIT_SEAT_LIMIT_REACHED" -> 409;
+            case "IDENTITY_JIT_APPROVAL_REQUIRED" -> 403;
+            case "IDENTITY_ACCOUNT_LINK_REQUIRED" -> 403;
+            case "IDENTITY_ACCOUNT_LINK_DENIED" -> 403;
+            case "IDENTITY_SSO_BREAK_GLASS_REQUIRED" -> 403;
+            case "IDENTITY_SCIM_RESOURCE_NOT_FOUND" -> 404;
+            case "IDENTITY_SCIM_VERSION_CONFLICT" -> 409;
+            case "IDENTITY_SCIM_PROVISIONING_FAILED" -> 500;
+            default -> 500;
+        };
+        ErrorResponse error = ErrorResponse.of(status, "Federation error", e.getMessage(), e.getErrorCode(), "");
         return ResponseEntity.status(status).body(error);
     }
 

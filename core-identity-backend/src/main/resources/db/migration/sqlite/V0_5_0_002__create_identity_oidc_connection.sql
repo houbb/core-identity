@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS identity_oidc_connection (
+    connection_id            TEXT    NOT NULL,
+    issuer                   TEXT,
+    discovery_uri            TEXT,
+    client_id                TEXT,
+    encrypted_client_secret  TEXT,
+    secret_key_version       TEXT,
+    scopes_json              TEXT,
+    subject_claim            TEXT    DEFAULT 'sub',
+    email_claim              TEXT    DEFAULT 'email',
+    name_claim               TEXT    DEFAULT 'name',
+    groups_claim             TEXT,
+    require_email_verified   INTEGER NOT NULL DEFAULT 1,
+    userinfo_enabled         INTEGER NOT NULL DEFAULT 1,
+    logout_endpoint          TEXT,
+    configuration_cache_json TEXT,
+    configuration_fetched_at INTEGER,
+    created_at               INTEGER NOT NULL,
+    updated_at               INTEGER NOT NULL,
+    version                  INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (connection_id)
+);

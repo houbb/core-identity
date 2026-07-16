@@ -4,6 +4,9 @@ package com.github.houbb.core.identity.application.domain;
  * Membership domain object — user-to-organization relationship.
  *
  * P2 extended fields: source, lifecycle timestamps, lastAccessedAt, createdBy.
+ *
+ * P5 extended fields: managementSource, managedByConnectionId, externalResourceId,
+ * provisionedAt, deprovisionedAt.
  */
 public class Membership {
 
@@ -19,6 +22,11 @@ public class Membership {
     private Long suspendedAt;
     private Long lastAccessedAt;
     private String createdBy;
+    private String managementSource;
+    private String managedByConnectionId;
+    private String externalResourceId;
+    private Long provisionedAt;
+    private Long deprovisionedAt;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -50,6 +58,16 @@ public class Membership {
     public void setLastAccessedAt(Long lastAccessedAt) { this.lastAccessedAt = lastAccessedAt; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+    public String getManagementSource() { return managementSource; }
+    public void setManagementSource(String managementSource) { this.managementSource = managementSource; }
+    public String getManagedByConnectionId() { return managedByConnectionId; }
+    public void setManagedByConnectionId(String managedByConnectionId) { this.managedByConnectionId = managedByConnectionId; }
+    public String getExternalResourceId() { return externalResourceId; }
+    public void setExternalResourceId(String externalResourceId) { this.externalResourceId = externalResourceId; }
+    public Long getProvisionedAt() { return provisionedAt; }
+    public void setProvisionedAt(Long provisionedAt) { this.provisionedAt = provisionedAt; }
+    public Long getDeprovisionedAt() { return deprovisionedAt; }
+    public void setDeprovisionedAt(Long deprovisionedAt) { this.deprovisionedAt = deprovisionedAt; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

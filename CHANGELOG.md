@@ -1,5 +1,184 @@
 # Changelog
 
+## 0.7.0 (2026-07-16) — P5 企业 SSO 与身份联合
+
+### 核心能力
+
+**企业身份联合 (Federation)**
+- Federation Connection 统一模型：支持 OIDC 和 SAML 2.0 两种协议
+- 7 种连接状态：DRAFT → VALIDATING → ACTIVE → DEGRADED → SUSPENDED → ERROR → DELETED
+- 一个组织可配置多个 IdP 连接，按优先级路由
+- 连接所有权严格绑定 `organization_id`
+
+**域名验证**
+- DNS TXT 记录验证（`_core-identity-verification.{domain}`）
+- 域名唯一性约束（一个主域名只能被一个 ACTIVE 组织声明）
+- 验证状态：PENDING → VERIFIED / FAILED / EXPIRED / REVOKED / CONFLICT
+- SHA-256 挑战值 + 24h 有效期的安全验证流程
+
+**身份发现 (Home Realm Discovery)**
+- 邮箱域名自动路由到企业 SSO（已验证域名）
+- 多 IdP 场景下展示身份提供商选择
+- 组织专属入口 `/sso/{organizationSlug}`
+- 防止邮箱枚举的公开信息控制
+
+**OIDC Relying Party**
+- 手动 RestTemplate + JJWT 实现（无 Spring Security OAuth2 依赖）
+- Authorization Code + PKCE (S256) 完整流程
+- ID Token 全量验证：issuer / signature / kid / audience / azp / expiration / nonce / state
+- Federation State 内存管理（state / nonce / code_verifier），5 分钟 TTL
+- Client Secret AES-256-GCM 加密存储
+
+**SAML 2.0 Service Provider**
+- OpenSAML 5.x 直接集成（无 Spring Security SAML2 依赖）
+- SP-Initiated SSO（HTTP-Redirect AuthnRequest + HTTP-POST Response）
+- 全量安全验证：签名、InResponseTo、Destination、Audience、Recipient、时间窗口、重放防护
+- SP Metadata 生成 + IdP Metadata 解析
+- 证书状态机管理（PENDING → ACTIVE → RETIRING → EXPIRED → REVOKED）
+
+**External Identity 模型**
+- 唯一键：`connection_id + external_subject`（永不使用邮箱作为主键）
+- 状态机：ACTIVE / SUSPENDED / UNLINKED / CONFLICT / ORPHANED
+- 安全绑定优先级：已有匹配 → 用户主动绑定 → 已验证域名 + email_verified → 账号关联确认
+- 严禁通过邮箱自动绑定（防账号接管）
+
+**JIT Provisioning**
+- 首次 SSO 登录自动创建 User + Email + Membership + ExternalIdentity（一笔事务）
+- JIT 策略：ENABLED / DISABLED / REQUIRE_APPROVAL
+- 域名白名单 + email_verified 检查
+- 默认角色限制（MEMBER / VIEWER，永不授予 OWNER）
+- SCIM 生命周期优先（SCIM 已停用成员不被 JIT 恢复）
+- 企业套餐座位检查
+
+**SSO 强制策略**
+- 4 级强制模式：OPTIONAL → REQUIRED_FOR_MEMBERS → REQUIRED_FOR_DOMAINS → REQUIRED_FOR_ALL_EXCEPT_BREAK_GLASS
+- Break-glass 紧急管理员账号（强 MFA 保护、不受 SSO 强制影响、每次使用产生 CRITICAL 事件）
+- 策略发布流程：配置 → 测试 → 预览影响 → 宽限期 → 通知 → 正式强制执行
+- IdP 故障不明文回退密码登录
+
+**SCIM 2.0 Service Provider**
+- 完整 Users + Groups CRUD（POST / GET / PUT / PATCH / DELETE）
+- ServiceProviderConfig / ResourceTypes / Schemas 端点
+- SCIM Token 认证（独立 Bearer Token，SHA-256 Hash 存储，只显示一次）
+- 双 Token 并行有效支持无缝轮换
+- ETag 并发控制（`meta.version` + `If-Match`）
+- Group → Role 映射（ADD_ONLY / AUTHORITATIVE 两种模式）
+- 角色保护（外部组不能授予 OWNER / SUPER_ADMIN / Break-glass Admin）
+
+**SCIM 停权安全边界**
+- `DELETE /Users` 默认不物理删除本地 User，只停用 Membership + 撤销 Session + 撤销 Token
+- SCIM 只管理对应企业组织下的 Membership，不影响用户在其他组织的身份
+
+**属性映射**
+- 每个属性的所有权：LOCAL / JIT / SCIM / EXTERNAL_ALWAYS
+- 属性来源优先级：SCIM > JIT > Local（避免登录 Claim 覆盖 SCIM 权威字段）
+- OIDC Claim + SAML Attribute → Core Identity 字段可视化映射
+
+**上游 IdP Token 安全**
+- 上游 Token 不传给 Billing、Storage、AI Gateway 等下游服务
+- 下游服务只能收到 Core Identity 自己的 Session / Access Token
+- 统一 issuer、统一 subject、统一 organization_id、统一撤销机制
+
+---
+
+### core-identity-backend
+
+**新增 22 张数据表**
+
+| 表名 | 用途 |
+|---|---|
+| `identity_federation_connection` | IdP 连接核心配置 |
+| `identity_oidc_connection` | OIDC 协议配置（Client Secret 加密存储） |
+| `identity_saml_connection` | SAML 协议配置（Metadata XML 加密存储） |
+| `identity_federation_certificate` | IdP/SP 签名和加密证书 |
+| `identity_verified_domain` | 企业域名验证 |
+| `identity_domain_verification` | DNS TXT 验证挑战记录 |
+| `identity_external_identity` | 外部 IdP 身份映射（UNIQUE: connection_id + external_subject） |
+| `identity_account_link_request` | 账号关联安全确认流程 |
+| `identity_attribute_mapping` | 属性映射配置 |
+| `identity_jit_policy` | JIT 自动建号策略 |
+| `identity_sso_policy` | 组织 SSO 强制策略 |
+| `identity_federated_session` | 上游 IdP Session 关联 |
+| `identity_scim_client` | SCIM Token 认证 |
+| `identity_scim_resource` | SCIM 资源映射（Users/Groups） |
+| `identity_scim_group` | SCIM 外部组 |
+| `identity_scim_group_member` | 组成员关系 |
+| `identity_scim_group_role_mapping` | 组→角色映射 |
+| `identity_provisioning_job` | 同步作业跟踪 |
+| `identity_provisioning_log` | 同步操作日志 |
+
+**扩展 3 张表**
+
+| 表名 | 新增字段 |
+|---|---|
+| `identity_membership` | management_source, managed_by_connection_id, external_resource_id, provisioned_at, deprovisioned_at |
+| `identity_session` | authentication_source, federation_connection_id, external_identity_id |
+| `identity_user` | primary_identity_source |
+
+**新增 Domain 对象 × 19**
+`FederationConnection`, `VerifiedDomain`, `DomainVerification`, `OidcConnection`, `SamlConnection`, `FederationCertificate`, `ExternalIdentity`, `AccountLinkRequest`, `AttributeMapping`, `JitPolicy`, `SsoPolicy`, `FederatedSession`, `ScimClient`, `ScimResource`, `ScimGroup`, `ScimGroupMember`, `ScimGroupRoleMapping`, `ProvisioningJob`, `ProvisioningLog`
+
+**新增 Port 接口 × 19**
+全部 P5 实体的 Repository 接口
+
+**新增 Application Service × 7**
+- `FederationService` / `FederationServiceImpl`：域名验证、连接管理、身份发现（核心编排层）
+- `OidcRelyingPartyService` / `OidcRelyingPartyServiceImpl`：OIDC Auth Code + PKCE 完整流程，JJWT ID Token 验证
+- `SamlServiceProviderService` / `SamlServiceProviderServiceImpl`：SAML AuthnRequest 构建 + Response 全量验证（OpenSAML）
+- `ExternalIdentityService` / `ExternalIdentityServiceImpl`：外部身份绑定/解绑/冲突解决，安全关联确认
+- `JitProvisioningService` / `JitProvisioningServiceImpl`：事务内自动建号+入组织+分配角色
+- `SsoPolicyService` / `SsoPolicyServiceImpl`：SSO 强制检查 + Break-glass 管理
+- `ScimService` / `ScimServiceImpl`：SCIM 2.0 Users/Groups CRUD + 组角色映射 + 生命周期停权
+- `FederationSessionService` / `FederationSessionServiceImpl`：联合会话创建 + 上游关联
+
+**新增 Infrastructure**
+- `OidcRelyingPartyServiceImpl.FederationStateEntry`：内存态 PKCE state/nonce/code_verifier 管理（LinkedHashMap LRU + TTL）
+
+**Public API**
+
+| 方法 | 路径 | 功能 |
+|---|---|---|
+| `POST` | `/api/v1/identity/auth/discovery` | 身份发现（邮箱 → 组织 → IdP） |
+| `GET` | `/api/v1/identity/federation/{connectionKey}/login` | 企业 SSO 登录入口 |
+| `GET` | `/api/v1/identity/federation/oidc/{connectionKey}/callback` | OIDC 回调 |
+| `POST` | `/api/v1/identity/federation/saml/{connectionKey}/acs` | SAML ACS 端点 |
+| `GET` | `/sso/{organizationSlug}` | 组织专属 SSO 入口 |
+| `POST` | `/api/v1/identity/organizations/{orgId}/domains` | 添加域名 |
+| `POST` | `/api/v1/identity/organizations/{orgId}/domains/{id}/verify` | 验证域名 |
+| `POST` | `/api/v1/identity/organizations/{orgId}/federation-connections` | 创建连接 |
+| `POST` | `/api/v1/identity/organizations/{orgId}/federation-connections/{id}/activate` | 激活连接 |
+| `POST` | `/api/v1/identity/organizations/{orgId}/federation-connections/{id}/suspend` | 暂停连接 |
+| `GET` | `/api/v1/identity/me/external-identities` | 我的外部身份列表 |
+| `DELETE` | `/api/v1/identity/me/external-identities/{id}` | 解绑外部身份 |
+| `GET/POST` | `/api/v1/identity/account-link-requests/{id}` | 账号关联确认/拒绝 |
+| `GET` | `/scim/v2/ServiceProviderConfig` | SCIM 服务配置 |
+| `GET` | `/scim/v2/ResourceTypes` | SCIM 资源类型 |
+| `GET` | `/scim/v2/Schemas` | SCIM Schema |
+| `POST/GET/PUT/PATCH/DELETE` | `/scim/v2/Users`, `/scim/v2/Users/{id}` | SCIM 用户 CRUD |
+| `POST/GET/PATCH/DELETE` | `/scim/v2/Groups`, `/scim/v2/Groups/{id}` | SCIM 组 CRUD |
+
+**GlobalExceptionHandler 新增**
+- `FederationException` → 30+ 错误码映射到 HTTP 状态码
+
+**错误码（30+）**
+`IDENTITY_DOMAIN_NOT_VERIFIED`, `IDENTITY_DOMAIN_CONFLICT`, `IDENTITY_FEDERATION_CONNECTION_NOT_FOUND`, `IDENTITY_FEDERATION_CONNECTION_NOT_ACTIVE`, `IDENTITY_OIDC_DISCOVERY_FAILED`, `IDENTITY_OIDC_STATE_INVALID`, `IDENTITY_OIDC_ID_TOKEN_INVALID`, `IDENTITY_SAML_RESPONSE_INVALID`, `IDENTITY_SAML_SIGNATURE_INVALID`, `IDENTITY_EXTERNAL_IDENTITY_CONFLICT`, `IDENTITY_ACCOUNT_LINK_REQUIRED`, `IDENTITY_JIT_DISABLED`, `IDENTITY_SSO_REQUIRED`, `IDENTITY_SSO_BREAK_GLASS_REQUIRED`, `IDENTITY_SCIM_UNAUTHORIZED`, `IDENTITY_SCIM_RESOURCE_CONFLICT`, ...
+
+**Flyway 迁移**
+- 新增 22 个 MySQL 迁移文件 + 22 个 SQLite 迁移文件（V0_5_0_001 ~ V0_5_0_022）
+
+---
+
+### 测试
+
+- **回归测试**：P0 + P1 + P2 + P3 + P4 + P5 = 62 个测试全部通过（0 失败）
+
+```
+Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
 ## 0.6.0 (2026-07-16) — P4 账号安全与零信任基础
 
 ### 核心能力

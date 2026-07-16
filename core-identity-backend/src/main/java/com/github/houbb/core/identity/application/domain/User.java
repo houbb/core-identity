@@ -5,6 +5,8 @@ package com.github.houbb.core.identity.application.domain;
  *
  * P4 extended fields: securityVersion, securityStatus, riskLevel, mfaEnrolled,
  * phishingResistantEnrolled, recoveryState, lastSecurityReviewAt.
+ *
+ * P5 extended fields: primaryIdentitySource.
  */
 public class User {
 
@@ -26,6 +28,7 @@ public class User {
     private int phishingResistantEnrolled;
     private String recoveryState;
     private Long lastSecurityReviewAt;
+    private String primaryIdentitySource;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -67,6 +70,8 @@ public class User {
     public void setRecoveryState(String recoveryState) { this.recoveryState = recoveryState; }
     public Long getLastSecurityReviewAt() { return lastSecurityReviewAt; }
     public void setLastSecurityReviewAt(Long lastSecurityReviewAt) { this.lastSecurityReviewAt = lastSecurityReviewAt; }
+    public String getPrimaryIdentitySource() { return primaryIdentitySource; }
+    public void setPrimaryIdentitySource(String primaryIdentitySource) { this.primaryIdentitySource = primaryIdentitySource; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

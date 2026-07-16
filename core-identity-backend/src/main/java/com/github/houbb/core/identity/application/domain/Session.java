@@ -6,6 +6,8 @@ package com.github.houbb.core.identity.application.domain;
  * P2 extended fields: lastOrganizationId, permissionVersion.
  * P4 extended fields: deviceId, authenticationLevel, authenticationMethodsJson,
  * strongAuthAt, riskLevel, reauthRequiredAt, securityVersion, lastRiskEvaluatedAt.
+ *
+ * P5 extended fields: authenticationSource, federationConnectionId, externalIdentityId.
  */
 public class Session {
 
@@ -33,6 +35,9 @@ public class Session {
     private Long reauthRequiredAt;
     private long securityVersion;
     private Long lastRiskEvaluatedAt;
+    private String authenticationSource;
+    private String federationConnectionId;
+    private String externalIdentityId;
     private long createdAt;
     private long updatedAt;
     private long version;
@@ -86,6 +91,12 @@ public class Session {
     public void setSecurityVersion(long securityVersion) { this.securityVersion = securityVersion; }
     public Long getLastRiskEvaluatedAt() { return lastRiskEvaluatedAt; }
     public void setLastRiskEvaluatedAt(Long lastRiskEvaluatedAt) { this.lastRiskEvaluatedAt = lastRiskEvaluatedAt; }
+    public String getAuthenticationSource() { return authenticationSource; }
+    public void setAuthenticationSource(String authenticationSource) { this.authenticationSource = authenticationSource; }
+    public String getFederationConnectionId() { return federationConnectionId; }
+    public void setFederationConnectionId(String federationConnectionId) { this.federationConnectionId = federationConnectionId; }
+    public String getExternalIdentityId() { return externalIdentityId; }
+    public void setExternalIdentityId(String externalIdentityId) { this.externalIdentityId = externalIdentityId; }
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
     public long getUpdatedAt() { return updatedAt; }

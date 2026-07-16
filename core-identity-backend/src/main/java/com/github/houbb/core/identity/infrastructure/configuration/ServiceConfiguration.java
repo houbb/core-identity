@@ -330,4 +330,28 @@ public class ServiceConfiguration {
     public SecurityPolicyService securityPolicyService(SecurityPolicyRepository policyRepo) {
         return new SecurityPolicyService(policyRepo);
     }
+
+    // ====================================================================
+    // === P5 Enterprise SSO & Federation ================================
+    // ====================================================================
+
+    @Value("${core.federation.oidc-state-ttl-seconds:300}")
+    private int oidcStateTtlSeconds;
+
+    @Value("${core.federation.saml-clock-skew-seconds:60}")
+    private int samlClockSkewSeconds;
+
+    @Value("${core.federation.encryption-key:dev-federation-key-32-bytes-aes256}")
+    private String federationEncryptionKey;
+
+    @Bean
+    public FederationService federationService(FederationConnectionRepository connRepo,
+                                                VerifiedDomainRepository domainRepo,
+                                                DomainVerificationRepository verificationRepo,
+                                                OrganizationRepository orgRepo,
+                                                AuditService auditService,
+                                                OutboxService outboxService) {
+        return new FederationServiceImpl(connRepo, domainRepo, verificationRepo, orgRepo,
+                auditService, outboxService);
+    }
 }
