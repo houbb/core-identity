@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS identity_oidc_connection (
+    connection_id            VARCHAR(36)  NOT NULL,
+    issuer                   VARCHAR(500),
+    discovery_uri            VARCHAR(1000),
+    client_id                VARCHAR(255),
+    encrypted_client_secret  TEXT,
+    secret_key_version       VARCHAR(50),
+    scopes_json              TEXT,
+    subject_claim            VARCHAR(100) DEFAULT 'sub',
+    email_claim              VARCHAR(100) DEFAULT 'email',
+    name_claim               VARCHAR(100) DEFAULT 'name',
+    groups_claim             VARCHAR(100),
+    require_email_verified   INTEGER      NOT NULL DEFAULT 1,
+    userinfo_enabled         INTEGER      NOT NULL DEFAULT 1,
+    logout_endpoint          VARCHAR(1000),
+    configuration_cache_json TEXT,
+    configuration_fetched_at BIGINT,
+    created_at               BIGINT       NOT NULL,
+    updated_at               BIGINT       NOT NULL,
+    version                  BIGINT       NOT NULL DEFAULT 1,
+    PRIMARY KEY (connection_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
