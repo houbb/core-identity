@@ -1,0 +1,45 @@
+# ============================================================================
+# P7 Enterprise Profile — PostgreSQL/MySQL, Redis, full observability
+# For large enterprises, high concurrency, strict RTO/RPO.
+# ============================================================================
+spring:
+  datasource:
+    url: ${ENTERPRISE_DB_URL:jdbc:mysql://localhost:3306/core_identity?useSSL=true&serverTimezone=UTC}
+    driver-class-name: ${ENTERPRISE_DB_DRIVER:com.mysql.cj.jdbc.Driver}
+    username: ${ENTERPRISE_DB_USER:root}
+    password: ${ENTERPRISE_DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/mysql
+    baseline-on-migrate: true
+
+core:
+  database:
+    type: ${ENTERPRISE_DB_TYPE:mysql}
+  deployment:
+    mode: enterprise
+  cache:
+    type: redis
+  session:
+    store-type: redis
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+  outbox:
+    relay:
+      enabled: true
+      poll-interval: 3s
+      max-attempts: 8
+  cluster:
+    enabled: true
+  observability:
+    traces:
+      enabled: true
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+    metrics:
+      export: true

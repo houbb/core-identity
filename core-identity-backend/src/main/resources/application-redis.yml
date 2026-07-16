@@ -1,0 +1,22 @@
+# ============================================================================
+# P7 Redis Profile — optional overlay for any deployment mode
+# Activate with: spring.profiles.active=mysql,standard,redis
+# ============================================================================
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+
+core:
+  cache:
+    type: redis
+  session:
+    store-type: redis

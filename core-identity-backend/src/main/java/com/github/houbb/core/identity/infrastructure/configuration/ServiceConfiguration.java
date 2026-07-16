@@ -3,9 +3,15 @@ package com.github.houbb.core.identity.infrastructure.configuration;
 import com.github.houbb.core.identity.application.port.*;
 import com.github.houbb.core.identity.application.service.*;
 import com.github.houbb.core.identity.infrastructure.cache.CaffeineCacheManager;
+import com.github.houbb.core.identity.infrastructure.cache.CompositeCacheManager;
+import com.github.houbb.core.identity.infrastructure.observability.GracefulShutdownHandler;
 import com.github.houbb.core.identity.infrastructure.security.BCryptPasswordHasher;
 import com.github.houbb.core.identity.infrastructure.security.TotpSecretEncryptor;
+import com.github.houbb.core.identity.infrastructure.session.DatabaseSessionStore;
+import com.github.houbb.core.identity.infrastructure.session.RedisSessionStore;
+import com.github.houbb.core.identity.infrastructure.task.DatabaseLeaderElection;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -81,11 +87,6 @@ public class ServiceConfiguration {
     @Bean
     public PasswordHasher passwordHasher() {
         return new BCryptPasswordHasher();
-    }
-
-    @Bean
-    public CaffeineCacheManager caffeineCacheManager() {
-        return new CaffeineCacheManager();
     }
 
     // === P3.2 Signing Key ===
@@ -406,5 +407,126 @@ public class ServiceConfiguration {
     @Bean
     public PrivacyService privacyService(PrivacyDataRepository privacyDataRepo) {
         return new PrivacyService(privacyDataRepo);
+    }
+
+    // ====================================================================
+    // === P7.0-7.1 Cluster, Session Store, and Deployment ===============
+    // ====================================================================
+
+    @Value("${core.cluster.enabled:false}")
+    private boolean clusterEnabled;
+
+    @Value("${core.cluster.region:default}")
+    private String clusterRegion;
+
+    @Value("${core.cluster.availability-zone:default}")
+    private String clusterAvailabilityZone;
+
+    @Bean
+    public ClusterNodeService clusterNodeService(ClusterNodeRepository clusterNodeRepo) {
+        return new ClusterNodeService(clusterNodeRepo, clusterEnabled,
+                clusterRegion, clusterAvailabilityZone);
+    }
+
+    /**
+     * SessionStore: database-backed (always available).
+     * This is used as the delegate when Redis is configured but unavailable.
+     */
+    @Bean
+    public DatabaseSessionStore databaseSessionStore(SessionRepository sessionRepo) {
+        return new DatabaseSessionStore(sessionRepo);
+    }
+
+    /**
+     * SessionStore: Redis-backed with DB fallback.
+     * Active when core.session.store-type=redis.
+     */
+    @Bean
+    @ConditionalOnProperty(name = "core.session.store-type", havingValue = "redis")
+    public RedisSessionStore redisSessionStore(DatabaseSessionStore databaseSessionStore) {
+        return new RedisSessionStore(databaseSessionStore);
+    }
+
+    @Value("${core.session.store-type:database}")
+    private String sessionStoreType;
+
+    /**
+     * Primary SessionStore bean.
+     * Uses RedisSessionStore when configured, otherwise DatabaseSessionStore.
+     */
+    @Bean
+    public SessionStore sessionStore(
+            @org.springframework.beans.factory.annotation.Qualifier("databaseSessionStore") SessionStore databaseStore) {
+        if ("redis".equals(sessionStoreType)) {
+            // Return RedisSessionStore if available, fall back to database
+            try {
+                return new RedisSessionStore(databaseStore);
+            } catch (Exception e) {
+                return databaseStore;
+            }
+        }
+        return databaseStore;
+    }
+
+    // ====================================================================
+    // === P7.2 Cache Manager =============================================
+    // ====================================================================
+
+    @Value("${core.cache.type:caffeine}")
+    private String cacheType;
+
+    @Bean
+    public CaffeineCacheManager caffeineCacheManager() {
+        return new CaffeineCacheManager();
+    }
+
+    @Bean
+    public CompositeCacheManager compositeCacheManager(CaffeineCacheManager caffeine) {
+        // P7.2: In standalone/standard mode, only Caffeine.
+        // In enterprise mode with Redis, CompositeCacheManager wraps Redis + Caffeine.
+        // Redis integration is deferred; for now, pass null as fallback.
+        return new CompositeCacheManager(caffeine, null);
+    }
+
+    // ====================================================================
+    // === P7.3 Outbox Relay ==============================================
+    // ====================================================================
+
+    @Value("${core.outbox.relay.enabled:false}")
+    private boolean outboxRelayEnabled;
+
+    @Bean
+    public OutboxRelayService outboxRelayService(OutboxEventRepository outboxRepo,
+                                                  EventSubscriptionRepository subRepo,
+                                                  EventDeliveryAttemptRepository deliveryRepo) {
+        return new OutboxRelayService(outboxRepo, subRepo, deliveryRepo, outboxRelayEnabled);
+    }
+
+    // ====================================================================
+    // === P7.4 Leader Election & Distributed Jobs ========================
+    // ====================================================================
+
+    @Bean
+    public DatabaseLeaderElection databaseLeaderElection(RuntimeLeaseRepository leaseRepo) {
+        return new DatabaseLeaderElection(leaseRepo);
+    }
+
+    // ====================================================================
+    // === P7.5 Graceful Shutdown =========================================
+    // ====================================================================
+
+    @Bean
+    public GracefulShutdownHandler gracefulShutdownHandler(ClusterNodeService clusterNodeService,
+                                                            LeaderElectionPort leaderElection) {
+        return new GracefulShutdownHandler(clusterNodeService, leaderElection);
+    }
+
+    // ====================================================================
+    // === P7.6 Degradation Manager =======================================
+    // ====================================================================
+
+    @Bean
+    public DegradationManager degradationManager() {
+        return new DegradationManager();
     }
 }

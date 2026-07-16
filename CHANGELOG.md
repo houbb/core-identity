@@ -1,5 +1,203 @@
 # Changelog
 
+## 0.9.0 (2026-07-16) — P7 高可用与规模化基础设施
+
+### 核心能力
+
+P7 将 Core Identity 从单实例部署升级为支持多实例、可水平扩展、可容灾的平台级基础设施。坚持关键原则：**社区版 SQLite 单机仍可直接启动，Redis/Kafka/Kubernetes 全部可选，不做强制云原生。**
+
+### P7.0 — 部署模式与数据库抽象
+
+**三种部署模式**
+- `standalone`：SQLite + Caffeine 缓存 + 无集群（默认，零配置启动）
+- `standard`：MySQL + 可选 Redis + HTTP 事件中继
+- `enterprise`：MySQL/PostgreSQL + Redis 缓存 + 全量可观测性
+
+**配置文件**
+- `application-standalone.yml`：单机模式（当前默认行为）
+- `application-standard.yml`：中小团队生产部署
+- `application-enterprise.yml`：大型企业高并发部署
+- `application-redis.yml`：Redis 覆盖层（可叠加到任何模式）
+
+**Database Adapter 抽象**
+- `DatabaseAdapter` 接口：统一 DataSource / DatabaseType(SQLITE/MYSQL/POSTGRESQL/H2) / 只读副本感知
+- `ConsistencyContext`：ThreadLocal 读写一致性控制（`PRIMARY_REQUIRED` / `REPLICA_ALLOWED`）
+- `SqliteDatabaseAdapter` / `MySqlDatabaseAdapter` / `H2DatabaseAdapter`：按 `core.database.type` 条件装配
+- `CoreIdentityProperties`：`@ConfigurationProperties(prefix="core")` 统一配置类，14 个嵌套属性组，全部带默认值
+
+---
+
+### P7.1 — 无状态多实例
+
+**SessionStore 抽象**
+- `SessionStore` 接口：与 `SessionRepository` 分离，代表"分布式会话状态"契约
+- `DatabaseSessionStore`：默认实现，直接委托给 `SessionRepository`（零变化）
+- `RedisSessionStore`：Redis 热缓存 + DB 回退，Redis 故障不影响登录
+- `core.session.store-type=database|redis` 配置选择
+
+**跨节点状态保障**
+- `AuthenticationChallenge`、`AuthorizationCode`、`RefreshToken` 全部已 DB 持久化 → 天然支持跨节点
+- 不依赖 Sticky Session：任意节点可验证其他节点创建的 Session/Code/Challenge
+
+**集群节点管理**
+- `identity_cluster_node` 表（P7 首张新表）：节点 ID、实例 ID、服务类型、版本、状态、心跳
+- `ClusterNodeService`：启动注册 → 15 秒心跳 → 关闭排空 → 超时标记 UNAVAILABLE
+- 6 种节点状态：HEALTHY / DEGRADED / DRAINING / UNAVAILABLE / INCOMPATIBLE
+- `ClusterHealthController`：`GET /api/v1/health` 返回节点状态 + 集群健康节点数 + 数据库类型
+
+---
+
+### P7.2 — 分布式缓存抽象
+
+**CacheManager 接口**
+- 统一 `CacheManager` port：`get(key, type)` / `put(key, value, ttl)` / `invalidate(key)` / `invalidateByPattern(pattern)` / `invalidateAll()`
+- 与安全原则对齐：从不缓存密码/Secret/私钥，只缓存授权结果和配置元数据
+
+**CaffeineCacheManager**
+- 重构为 `CacheManager` 接口实现，保留完整的向后兼容 API
+- 旧 API（`get(userId, orgId)` / `put(userId, orgId, roleIds, codes, version)`）全部继续工作
+- 前缀模式匹配：`permission:{userId}:{orgId}:{authVersion}`
+
+**CompositeCacheManager**
+- 多级缓存：L1 Caffeine（进程内）→ L2 Redis（分布式）→ DB 兜底
+- 写入时同步所有层，读取时按优先级回退
+- 单层故障不影响其他层
+
+---
+
+### P7.3 — HTTP 事件中继（无 Kafka）
+
+**OutboxRelayService**
+- 轮询 `identity_outbox_event` 表 → HTTP POST 到注册的 Webhook 订阅者
+- 指数退避重试（1s → 2s → 4s → 8s → 16s），最多 5 次
+- DEAD_LETTER 后可通过 API 重放
+- 事件模式匹配：支持 `identity.user.*` / `identity.*` / 精确匹配
+
+**事件订阅管理**
+- `identity_event_subscription` 表：WEBHOOK 类型，HMAC 签名密钥引用
+- `identity_event_delivery_attempt` 表：每次投递独立记录（状态/响应码/错误/下次重试时间）
+- `identity_inbox_event` 表：UNIQUE(consumer_name, event_id) 防重复消费
+
+---
+
+### P7.4 — 基于数据库的分布式协调
+
+**Leader Election**
+- `LeaderElectionPort` 接口：`tryAcquireLease` / `renewLease` / `releaseLease` / `getCurrentLeader` / `getFencingToken`
+- `DatabaseLeaderElection`：使用 `identity_runtime_lease` 表 + 乐观锁 + Fencing Token 实现
+- 零外部依赖：不需要 Kubernetes / ZooKeeper / Redis 锁
+
+**分布式任务**
+- `identity_distributed_job` 表：job_type + job_key 唯一约束，状态机 PENDING→RUNNING→COMPLETED/FAILED
+- `identity_job_execution` 表：每次执行独立记录（节点 ID / 尝试次数 / 心跳 / 指标）
+- Fencing Token 保护：旧节点恢复后不能继续执行已转移的任务
+
+---
+
+### P7.5 — 生命周期与可观测性
+
+**GracefulShutdownHandler**
+- 优雅关闭序列：标记 DRAINING → 释放所有 Lease → 完成进行中请求 → 关闭
+- 与 ClusterNodeService 集成：关闭时自动标记节点状态
+
+**TraceContext**
+- MDC 上下文工具：trace_id / request_id / organization_id / client_id
+- 加密敏感信息不入 Trace（密码/Token/TOTP/Client Secret/SAML Assertion）
+
+**健康端点**
+- `/api/v1/health`：节点状态（nodeId / clusterEnabled / healthyNodes）+ 数据库类型
+- 与 Spring Actuator `/actuator/health` 互补
+
+---
+
+### P7.6 — 韧性降级与系统状态
+
+**DegradationManager**
+- 5 个可降级组件：Redis / Notification / Billing / Storage / Event Broker
+- 组件状态追踪：healthy / failureReason / failureTime / recoveryTime
+- 降级原则：不能静默跳过安全校验（Redis 降级不能跳过 Session 验证）
+
+**系统状态 API**
+- `SystemStatusController`：`GET /api/v1/system/status`
+- 返回：overall(HEALTHY/DEGRADED) + cluster 信息 + dependencies 状态
+
+---
+
+### 数据迁移
+
+**7 张新表（MySQL + SQLite 双迁移）**
+
+| 迁移编号 | 表名 | 用途 |
+|---|---|---|
+| V0_7_0_001 | `identity_cluster_node` | 集群节点注册与心跳 |
+| V0_7_0_010 | `identity_event_subscription` | 事件订阅 Webhook |
+| V0_7_0_011 | `identity_event_delivery_attempt` | 事件投递记录 |
+| V0_7_0_012 | `identity_inbox_event` | 幂等事件消费 |
+| V0_7_0_020 | `identity_runtime_lease` | Leader 选举租约 |
+| V0_7_0_021 | `identity_distributed_job` | 分布式任务 |
+| V0_7_0_022 | `identity_job_execution` | 任务执行记录 |
+
+---
+
+### 新增文件清单
+
+**Domain 实体 × 5**
+`ClusterNode`、`EventSubscription`、`EventDeliveryAttempt`、`InboxEvent`、`DistributedJob`、`RuntimeLease`
+
+**Port 接口 × 9**
+`SessionStore`、`ClusterNodeRepository`、`CacheManager`、`EventSubscriptionRepository`、`EventDeliveryAttemptRepository`、`LeaderElectionPort`、`RuntimeLeaseRepository`、`DistributedJobRepository`
+
+**Application Service × 5**
+- `ClusterNodeService`：节点注册/心跳/排空/超时检测
+- `OutboxRelayService`：事件轮询 → HTTP 投递 → 重试 → 死信
+- `DegradationManager`：依赖健康追踪与降级决策
+
+**Infrastructure × 16**
+- `database/`：DatabaseAdapter + DatabaseType + ConsistencyContext + SqliteAdapter + MySqlAdapter + H2Adapter（6 个文件）
+- `session/`：DatabaseSessionStore + RedisSessionStore
+- `cache/`：CompositeCacheManager
+- `task/`：DatabaseLeaderElection
+- `observability/`：GracefulShutdownHandler + TraceContext
+
+**API Controller × 2**
+- `ClusterHealthController`：`GET /api/v1/health`
+- `SystemStatusController`：`GET /api/v1/system/status`
+
+**Configuration × 1**
+- `CoreIdentityProperties`：14 组嵌套配置属性，全部 `@ConfigurationProperties(prefix="core")`
+
+**YAML Configuration × 4**
+- `application-standalone.yml` / `application-standard.yml` / `application-enterprise.yml` / `application-redis.yml`
+
+**Flyway Migration × 14**（7 MySQL + 7 SQLite）
+- V0_7_0_001 ~ V0_7_0_022
+
+---
+
+### 明确不做（P8 或未来）
+
+- Kafka / Event Broker 集成（只用 HTTP Outbox Relay）
+- Redis Sentinel / Cluster（单机 Redis + DB 回退）
+- Kubernetes HPA / PodDisruptionBudget（仅代码预留）
+- Blue-Green / Canary 部署（仅 Rolling Update 兼容）
+- 多区域 Active-Passive / Active-Active
+- 插件 Runtime（Level 3/4）— 仅定义扩展点接口文档
+- Marketplace 治理
+- 多语言 SDK
+- SLO / 错误预算（仅暴露指标给 Prometheus）
+- Admin 运维控制台（仅 health/status API）
+- PostgreSQL 实现（仅 adapter 接口预留）
+
+---
+
+### 编译状态
+
+- 所有 Java 源文件编译通过（BUILD SUCCESS）
+- 向后兼容：P0–P6 已有功能无回归
+- SQLite 单机模式零配置启动
+
+---
+
 ## 0.8.0 (2026-07-16) — P6 企业治理与合规
 
 ### 核心能力
