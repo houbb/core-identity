@@ -4,16 +4,16 @@ Identity and Access Management for Core Platform.
 
 ## Architecture
 
-Four sub-projects with clear boundaries:
+Four independent sub-projects with clear boundaries — **no parent POM, no monorepo wrapper**:
 
 ```
 core-identity/
-├── core-identity-backend/       # Identity core service (sole data owner)
-├── core-identity-web/           # User self-service portal (Vue 3)
-├── core-identity-admin-backend/ # Management BFF (calls Identity via Internal API)
-├── core-identity-admin-web/     # Admin console (Vue 3, dark theme)
+├── core-identity-backend/       # Identity core service (sole data owner) — standalone Maven project
+├── core-identity-web/           # User self-service portal (Vue 3) — standalone npm project
+├── core-identity-admin-backend/ # Management BFF (calls Identity via Internal API) — standalone Maven project
+├── core-identity-admin-web/     # Admin console (Vue 3, dark theme) — standalone npm project
 ├── contracts/                   # OpenAPI specifications
-├── docs/                        # Design documents
+├── design-docs/                 # Design documents
 └── scripts/                     # Build scripts
 ```
 

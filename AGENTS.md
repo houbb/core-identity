@@ -4,12 +4,6 @@
 
 ---
 
-# 沟通语言 ⚠️ 强制遵守
-
-**全程使用中文沟通。** 包括但不限于：代码注释、commit message、PR 描述、设计文档、问题分析、错误报告。唯一例外是代码标识符（类名、方法名、变量名）使用英文。
-
----
-
 # 沟通规范 ⚠️ 强制遵守
 
 **需要你向我提问时，必须使用选项列表，禁止用散文/段落罗列问题。**
@@ -53,28 +47,7 @@
 
 # 测试验证 ⚠️ 强制执行
 
-**每次实现完成后，必须执行以下验证，禁止跳过：**
-
-1. **编译确认** — `mvn compile -pl core-identity-backend` 零错误通过
-2. **架构测试** — 确保 `application` 层不直接依赖 `org.springframework.jdbc`（所有数据库操作必须通过 Repository 接口）
-3. **单元测试** — 所有新增/修改的业务逻辑必须有 JUnit5 断言测试，覆盖正常路径 + 关键异常路径
-4. **端到端测试** — 通过 API 调用验证完整流程：
-   - 创建资源 → 读取资源 → 修改资源 → 删除资源
-   - 认证 → 授权 → 执行操作 → 验证副作用（审计/事件/通知）
-   - 错误输入 → 正确错误码 → 数据未被污染
-5. **回归确认** — 运行全部已有测试套件（`mvn test`），确保已有功能未被破坏
-
-**禁止行为：**
-- ❌ 写完代码不跑测试就提交
-- ❌ 只跑新的测试不跑回归
-- ❌ 测试失败时强行提交
-- ❌ 跳过端到端验证，只说"理论上应该可以"
-- ❌ application 层直接 import `org.springframework.jdbc.JdbcTemplate`（必须通过 port/repository 层隔离）
-
-**完成后必须回答这三个问题：**
-1. 本次改动是否已有测试覆盖？
-2. 全部已有测试是否仍然通过？
-3. 端到端流程是否已验证通过？
+单元断言测试+端到端测试
 
 # 执行原则
 
@@ -85,47 +58,30 @@
 
 # Unknowns Management
 
-## 强制触发规则 (Hard Trigger) ⚠️ 必须执行
+## 强制触发规则 (Hard Trigger)
 
-**当用户提出以下任一类型的任务时，你必须立即执行 Unknowns Discovery 流程（见下方），然后才能开始实现：**
+**当用户提出以下任一类型的任务时，你必须先执行 Unknowns Discovery 流程，然后才能开始实现：**
 
 - 新功能开发 / 新模块创建
 - 架构设计 / 数据模型设计
 - 数据库表设计或变更
 - 认证、授权、安全相关代码
 - 跨模块 / 跨系统改动
-- 多文件、大范围改动（≥5 个文件）
+- 多文件、大范围改动
 - 不可逆操作（如数据库迁移、删除数据）
 - 用户需求中有主观描述词（"简单""好看""智能""自然"）
-- 任何 P0-P7 设计文档的实现任务
 
 **这是硬性要求，不是建议。**
 
-**Unknowns Discovery 流程（内联执行，无需外部 Skill）：**
+**执行方式（按优先级尝试）：**
 
-1. **识别未知项** — 从以下维度扫描未知项：
-   - 技术选型（库的选择、算法、协议实现方式）
-   - 数据模型（表结构、字段语义、关系映射）
-   - 边界条件（并发、幂等、失败重试、超时）
-   - 安全考量（加密方式、密钥管理、攻击面）
-   - 兼容性（与已有代码、API 契约、数据迁移的冲突）
-   - 用户意图（需求中的模糊描述词）
-
-2. **分类未知项** — 按照影响范围/可逆性分类：
-   - 高风险（不可逆、范围大、安全相关）→ 必须向用户确认
-   - 中风险（可逆但耗时、跨系统）→ 建议确认
-   - 低风险（纯代码内、随时可改、单一文件）→ 采用最保守默认值并记录
-
-3. **提问确认** — 对高/中风险未知项，使用 AskUserQuestion 向用户确认（遵守上方沟通规范）
-
-4. **记录假设** — 对已确认的决策和低风险假设记录在 plan file 中
+1. **优先** — 调用 Skill 工具：`Skill("unknowns-discovery", "standard")`
+2. **Fallback** — 如果 Skill 不可用（返回 "Unknown skill"），则手动执行 `.agents/skills/unknowns-discovery/SKILL.md` 中定义的完整流程，产出 Unknowns Report（模板在 `templates/unknowns-report.md`）。将报告内容直接输出给用户确认，确认后再进入实现。
 
 **只有以下情况可以跳过：**
 - 单行修复（typo、注释修正）
 - 单文件简单 bug fix（已有明确根因）
 - 纯代码解释类问题
-
-**注意：如果 `unknowns-discovery` Skill 不存在于可用 Skill 列表中，你仍然必须执行上述内联流程。Skill 名称变化不应导致流程被跳过。**
 
 ---
 
@@ -151,7 +107,7 @@ Follow these rules:
 7. After implementation, explain what changed, what remains uncertain, and what evidence verifies the result.
 8. Convert recurring discoveries into tests, documentation, conventions, or reusable project knowledge.
 
-For substantial features, architecture changes, ambiguous product work, migrations, or cross-module changes, execute the Unknowns Discovery 流程 described above (内联执行，见上方强制触发规则).
+For substantial features, architecture changes, ambiguous product work, migrations, or cross-module changes, run the **Unknowns Discovery** skill before implementation.
 
 
 # 要求
@@ -163,3 +119,15 @@ For substantial features, architecture changes, ambiguous product work, migratio
 2）尽可能的端到端测试验证，保障整体功能正确性
 
 3）简明扼要的使用+变更内容
+
+# 文档更新
+
+## 变更日志
+
+每一次功能全部完成后，将变更压缩更新到 CHANGELOG.md 中，版本号主动询问一下用户
+
+## README
+
+README.md 也进行同步的更新，保持文档最新
+
+要面向用户去写，保留启动方式（方便快速体验）。

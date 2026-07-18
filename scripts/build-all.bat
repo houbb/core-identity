@@ -4,12 +4,24 @@ echo Core Identity - Build All
 echo ========================================
 echo.
 
-echo [1/4] Building Maven projects...
+echo [1/4] Building core-identity-backend...
+cd core-identity-backend
 call mvn clean verify -DskipTests
 if %ERRORLEVEL% NEQ 0 (
-    echo Maven build failed!
+    echo core-identity-backend build failed!
     exit /b 1
 )
+cd ..
+
+echo.
+echo Building core-identity-admin-backend...
+cd core-identity-admin-backend
+call mvn clean verify -DskipTests
+if %ERRORLEVEL% NEQ 0 (
+    echo core-identity-admin-backend build failed!
+    exit /b 1
+)
+cd ..
 
 echo.
 echo [2/4] Installing frontend dependencies...

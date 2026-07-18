@@ -5,8 +5,12 @@ echo "========================================"
 echo "Core Identity - Build All"
 echo "========================================"
 
-echo "[1/4] Building Maven projects..."
-mvn clean verify -DskipTests
+echo "[1/4] Building core-identity-backend..."
+cd core-identity-backend && mvn clean verify -DskipTests && cd ..
+
+echo
+echo "Building core-identity-admin-backend..."
+cd core-identity-admin-backend && mvn clean verify -DskipTests && cd ..
 
 echo "[2/4] Installing frontend dependencies..."
 cd core-identity-web && npm install && cd ..

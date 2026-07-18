@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.10.0 (2026-07-18) — 目录结构优化：前后端分离独立化
+
+### 变更背景
+
+按照 [设计文档 010](design-docs/010-struct-opt.md) 要求，实现前后端完全分离，代码结构保持独立性。
+
+### 变更内容
+
+- **删除根 `pom.xml`**：不再使用 Maven 父 POM 聚合，两个后端模块各自独立
+- **删除根 `package.json`**：不再使用 npm workspace，两个前端项目各自独立管理依赖
+- **`core-identity-backend`**：去掉 `<parent>` 引用，合并版本管理、插件配置，成为独立的 Spring Boot 项目
+- **`core-identity-admin-backend`**：同上，独立化的轻量 BFF 模块
+- **`scripts/build-all.bat` / `.sh`**：从根 `mvn` 改为逐个进入模块目录构建
+- **`README.md`**：更新架构描述，强调"无父 POM、无 monorepo"
+
+### 目标结构
+
+```
+core-identity/
+├── core-identity-backend/       # 独立 Maven 项目（Spring Boot）
+├── core-identity-web/           # 独立 npm 项目（Vue 3）
+├── core-identity-admin-backend/ # 独立 Maven 项目（Spring Boot）
+├── core-identity-admin-web/     # 独立 npm 项目（Vue 3）
+├── contracts/                   # API 契约
+├── scripts/                     # 构建脚本
+└── design-docs/                 # 设计文档
+```
+
+### 启动方式（不变）
+
+```bash
+# 后端
+cd core-identity-backend && mvn spring-boot:run     # :8101
+cd core-identity-admin-backend && mvn spring-boot:run  # :8102
+
+# 前端
+cd core-identity-web && npm install && npm run dev       # :5173
+cd core-identity-admin-web && npm install && npm run dev  # :5174
+```
+
+---
+
 ## 0.9.0 (2026-07-16) — P7 高可用与规模化基础设施
 
 ### 核心能力
